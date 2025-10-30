@@ -67,15 +67,32 @@ const TransferRedirect = () => {
 
   useEffect(() => {
     // Extract query parameters from URL
+    const recipient = searchParams.get("recipient");
     const amount = searchParams.get("amount");
     const label = searchParams.get("label");
     const message = searchParams.get("message");
 
-    console.log("=== PAYMENT REQUEST RECEIVED ===");
+    console.log("=== PAYMENT LINK OPENED ===");
+    console.log("Recipient:", recipient);
     console.log("Amount:", amount);
     console.log("Label:", label);
     console.log("Message:", message);
-    console.log("Recipient (connected wallet):", publicKey?.toBase58());
+
+    // VALIDATION: Check if recipient exists
+    if (!recipient) {
+      setError("Missing required parameter: recipient wallet address");
+      toast.error("Missing recipient wallet address");
+      return;
+    }
+
+    // VALIDATION: Verify the recipient is a valid Solana PublicKey
+    try {
+      new PublicKey(recipient);
+    } catch (err) {
+      setError("Invalid recipient wallet address");
+      toast.error("Invalid Solana wallet address");
+      return;
+    }
 
     // VALIDATION: Check if amount exists
     if (!amount || parseFloat(amount) <= 0) {
@@ -84,27 +101,27 @@ const TransferRedirect = () => {
       return;
     }
 
-    console.log("✓ Payment request validated successfully");
-  }, [searchParams, publicKey]);
+    console.log("✓ Payment link validated successfully");
+  }, [searchParams]);
 
-  // Function to generate payment request with connected wallet as recipient
-  const handleGeneratePaymentRequest = async () => {
+  // Function to process the USDC payment (payer sends to recipient from URL)
+  const handlePayment = async () => {
     if (!connected || !publicKey) {
       toast.error("Please connect your wallet first");
       return;
     }
 
+    const recipient = searchParams.get("recipient");
     const amount = searchParams.get("amount");
     const label = searchParams.get("label");
-    const message = searchParams.get("message");
 
-    console.log("=== GENERATING PAYMENT REQUEST ===");
-    console.log("Recipient (your wallet):", publicKey.toBase58());
+    console.log("=== PROCESSING PAYMENT ===");
+    console.log("From (payer - you):", publicKey.toBase58());
+    console.log("To (recipient):", recipient);
     console.log("Amount:", amount, "USDC");
-    console.log("Label:", label);
 
-    if (!amount || parseFloat(amount) <= 0) {
-      toast.error("Invalid payment amount");
+    if (!recipient || !amount || parseFloat(amount) <= 0) {
+      toast.error("Invalid payment parameters");
       return;
     }
 
@@ -112,39 +129,135 @@ const TransferRedirect = () => {
       setIsProcessing(true);
       setTransactionStatus("processing");
 
-      // Build payment request URL using Solana Pay standard
-      // The connected wallet (publicKey) is the RECIPIENT
-      const params = new URLSearchParams({
-        recipient: publicKey.toBase58(),
-        amount: amount,
-        'spl-token': USDC_MINT.toBase58(),
-      });
+      // Parse recipient address from URL
+      const recipientPubkey = new PublicKey(recipient);
 
-      if (label) {
-        params.append('label', label);
+      // Get the payer's USDC token account
+      const payerTokenAccount = await getAssociatedTokenAddress(
+        USDC_MINT,
+        publicKey
+      );
+
+      // CHECK IF PAYER HAS USDC ACCOUNT
+      let payerBalance = 0;
+      try {
+        const payerAccountInfo = await getAccount(connection, payerTokenAccount);
+        payerBalance = Number(payerAccountInfo.amount) / Math.pow(10, USDC_DECIMALS);
+        console.log(`✓ Your USDC account exists. Balance: ${payerBalance} USDC`);
+      } catch (error) {
+        console.error("✗ Your USDC account not found for mint:", USDC_MINT.toBase58());
+        const network = connection.rpcEndpoint.includes('devnet') ? 'devnet' : 'mainnet';
+        toast.error(
+          `You don't have a USDC account for ${network}. Please add USDC to your wallet first.`
+        );
+        setIsProcessing(false);
+        return;
       }
 
-      if (message) {
-        params.append('message', message);
+      // Check if payer has enough USDC
+      const requiredAmount = parseFloat(amount);
+      if (payerBalance < requiredAmount) {
+        toast.error(`Insufficient USDC balance. You have ${payerBalance} USDC but need ${requiredAmount} USDC`);
+        setIsProcessing(false);
+        return;
       }
 
-      // Generate Solana Pay URL
-      const solanaPayUrl = `solana:${publicKey.toBase58()}?${params.toString()}`;
+      // Get the recipient's USDC token account
+      const recipientTokenAccount = await getAssociatedTokenAddress(
+        USDC_MINT,
+        recipientPubkey
+      );
 
-      console.log("Generated Solana Pay URL:", solanaPayUrl);
+      // Convert amount to token units (USDC has 6 decimals)
+      const amountInTokenUnits = Math.floor(
+        parseFloat(amount) * Math.pow(10, USDC_DECIMALS)
+      );
 
-      // Also generate shareable web link
-      const shareableLink = `${window.location.origin}/pay-link?${params.toString()}`;
+      console.log(`Converting $${amount} USDC to ${amountInTokenUnits} base units`);
 
-      // Copy to clipboard
-      await navigator.clipboard.writeText(solanaPayUrl);
+      // Show user-friendly confirmation
+      toast.info(`Preparing to send ${amount} USDC to ${recipient.substring(0, 8)}...`);
 
-      toast.success("Payment request link copied to clipboard!", { duration: 5000 });
+      // Create transaction
+      const transaction = new Transaction();
+      console.log("=== BUILDING TRANSACTION ===");
 
-      // Store the link for display
-      setTransactionSignature(solanaPayUrl);
+      // Check if recipient's USDC account exists, if not create it
+      try {
+        await getAccount(connection, recipientTokenAccount);
+        console.log("✓ Recipient USDC account exists");
+      } catch (error) {
+        // Account doesn't exist, need to create it
+        console.log("✓ Adding instruction: Create recipient's USDC account");
+        toast.info("Creating recipient's USDC account...");
+        transaction.add(
+          createAssociatedTokenAccountInstruction(
+            publicKey, // payer
+            recipientTokenAccount, // ata
+            recipientPubkey, // owner
+            USDC_MINT // mint
+          )
+        );
+      }
+
+      // Add USDC transfer instruction
+      console.log(`✓ Adding instruction: Transfer ${amount} USDC (${amountInTokenUnits} base units)`);
+      console.log(`  From: ${payerTokenAccount.toBase58()}`);
+      console.log(`  To: ${recipientTokenAccount.toBase58()}`);
+
+      transaction.add(
+        createTransferInstruction(
+          payerTokenAccount,
+          recipientTokenAccount,
+          publicKey,
+          amountInTokenUnits
+        )
+      );
+
+      console.log(`Total instructions in transaction: ${transaction.instructions.length}`);
+
+      // Send transaction
+      console.log("Sending transaction...");
+      const signature = await sendTransaction(transaction, connection);
+      console.log("Transaction sent! Signature:", signature);
+      const network = connection.rpcEndpoint.includes('devnet') ? 'devnet' : 'mainnet';
+      console.log(`View transaction: https://solscan.io/tx/${signature}?cluster=${network}`);
+
+      // Store signature immediately
+      setTransactionSignature(signature);
+
+      // Wait for finalization
+      toast.loading("Finalizing transaction on-chain...", { id: "tx-confirm" });
+
+      const latestBlockhash = await connection.getLatestBlockhash();
+      await connection.confirmTransaction({
+        signature,
+        blockhash: latestBlockhash.blockhash,
+        lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+      }, "finalized");
+
+      console.log("Transaction finalized!");
+
+      // Verify balance changed
+      try {
+        const newPayerAccountInfo = await getAccount(connection, payerTokenAccount);
+        const newPayerBalance = Number(newPayerAccountInfo.amount) / Math.pow(10, USDC_DECIMALS);
+        console.log(`Old balance: ${payerBalance} USDC`);
+        console.log(`New balance: ${newPayerBalance} USDC`);
+        console.log(`Sent: ${payerBalance - newPayerBalance} USDC`);
+
+        if (newPayerBalance === payerBalance) {
+          console.warn("⚠️ WARNING: Balance didn't change!");
+        }
+      } catch (error) {
+        console.error("Could not verify balance change:", error);
+      }
+
+      console.log(`View on Solscan: https://solscan.io/tx/${signature}?cluster=${network}`);
+
+      // Update status to success
       setTransactionStatus("success");
-      setIsProcessing(false);
+      toast.dismiss("tx-confirm");
     } catch (err: any) {
       console.error("Payment error:", err);
       console.error("Full error object:", JSON.stringify(err, null, 2));
@@ -172,10 +285,13 @@ const TransferRedirect = () => {
     }
   };
 
-  // SUCCESS STATE: Show success message after payment request is generated
+  // SUCCESS STATE: Show success message after payment is completed
   if (transactionStatus === "success") {
     const amount = searchParams.get("amount");
     const label = searchParams.get("label");
+    const recipient = searchParams.get("recipient");
+    const network = connection.rpcEndpoint.includes('devnet') ? 'devnet' : 'mainnet';
+    const explorerUrl = `https://solscan.io/tx/${transactionSignature}?cluster=${network}`;
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-6">
@@ -190,10 +306,10 @@ const TransferRedirect = () => {
           {/* Success Message */}
           <div className="space-y-3">
             <h1 className="text-4xl font-bold text-foreground tracking-tight">
-              Payment Request Ready!
+              Payment Complete
             </h1>
             <p className="text-base text-muted-foreground">
-              Share this link with the payer
+              Transaction finalized on Solana
             </p>
           </div>
 
@@ -201,7 +317,7 @@ const TransferRedirect = () => {
           <div className="bg-card border border-border/50 rounded-3xl p-8 shadow-xl space-y-6 backdrop-blur-sm">
             {amount && (
               <div className="pb-4 border-b border-border/50">
-                <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Requesting</div>
+                <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Amount Sent</div>
                 <div className="text-4xl font-bold text-foreground">
                   ${amount} <span className="text-2xl font-normal text-muted-foreground">USDC</span>
                 </div>
@@ -213,22 +329,19 @@ const TransferRedirect = () => {
                 <div className="text-lg text-foreground">{label}</div>
               </div>
             )}
-            {publicKey && (
+            {recipient && (
               <div className="pb-4 border-b border-border/50">
-                <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Your Wallet (Recipient)</div>
+                <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Recipient</div>
                 <div className="text-sm text-foreground font-mono break-all">
-                  {publicKey.toBase58()}
+                  {recipient}
                 </div>
               </div>
             )}
             <div>
-              <div className="text-xs uppercase tracking-wider text-muted-foreground mb-3">Payment Link</div>
+              <div className="text-xs uppercase tracking-wider text-muted-foreground mb-3">Transaction</div>
               <div className="text-xs text-muted-foreground/70 font-mono break-all bg-muted/30 rounded-2xl p-4">
                 {transactionSignature}
               </div>
-              <p className="text-xs text-green-500 mt-2">
-                ✓ Copied to clipboard
-              </p>
             </div>
           </div>
 
@@ -238,12 +351,9 @@ const TransferRedirect = () => {
               variant="default"
               size="lg"
               className="w-full h-14 rounded-2xl text-base font-semibold shadow-lg hover:shadow-xl transition-all"
-              onClick={async () => {
-                await navigator.clipboard.writeText(transactionSignature);
-                toast.success("Link copied again!");
-              }}
+              onClick={() => window.open(explorerUrl, '_blank')}
             >
-              Copy Link Again
+              View on Explorer
             </Button>
             <Button
               variant="ghost"

@@ -3,13 +3,13 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { PublicKey } from "@solana/web3.js";
+import useWallet from "@/hooks/useWallet";
 
 const Pay = () => {
   const navigate = useNavigate();
+  const { publicKey, connected } = useWallet();
   const [amount, setAmount] = useState<string>("");
   const [description, setDescription] = useState<string>("");
-  const [recipient, setRecipient] = useState<string>("");
   const [paymentUrl, setPaymentUrl] = useState<string>("");
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -19,15 +19,15 @@ const Pay = () => {
   };
 
   const handlePay = async () => {
-    // Validate amount
-    if (!amount || parseFloat(amount) <= 0) {
-      toast.error("Please enter an amount");
+    // Validate wallet is connected
+    if (!connected || !publicKey) {
+      toast.error("Please connect your wallet first");
       return;
     }
 
-    // Validate recipient
-    if (!recipient.trim()) {
-      toast.error("Please enter a recipient");
+    // Validate amount
+    if (!amount || parseFloat(amount) <= 0) {
+      toast.error("Please enter an amount");
       return;
     }
 
@@ -37,19 +37,11 @@ const Pay = () => {
       return;
     }
 
-    // Validate recipient is a valid Solana PublicKey
-    let recipientPublicKey: PublicKey;
-    try {
-      recipientPublicKey = new PublicKey(recipient.trim());
-    } catch (error) {
-      toast.error("Invalid recipient wallet address");
-      return;
-    }
-
     try {
       // Build the transfer redirect URL with query parameters
+      // Use connected wallet as the recipient
       const transferParams = new URLSearchParams({
-        recipient: recipient.trim(),
+        recipient: publicKey,
         amount: amount,
         label: description,
         message: `Payment for ${description}`,
@@ -121,17 +113,15 @@ const Pay = () => {
             />
           </div>
 
-          {/* Recipient Input */}
-          <div className="space-y-3">
-            <label className="text-xs uppercase tracking-wider text-muted-foreground">Recipient</label>
-            <input
-              type="text"
-              value={recipient}
-              onChange={(e) => setRecipient(e.target.value)}
-              placeholder="Wallet address"
-              className="w-full px-4 py-3 bg-muted/30 border border-border/50 rounded-2xl text-foreground text-center outline-none focus:border-primary/50 placeholder:text-muted-foreground font-mono text-sm transition-colors"
-            />
-          </div>
+          {/* Wallet Info Display */}
+          {connected && publicKey && (
+            <div className="bg-primary/10 rounded-2xl p-4 border border-primary/20">
+              <div className="text-xs text-muted-foreground mb-1 text-center">Payment will be sent to</div>
+              <div className="text-sm font-mono text-foreground text-center break-all">
+                {publicKey.slice(0, 8)}...{publicKey.slice(-8)}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Pay Button */}
