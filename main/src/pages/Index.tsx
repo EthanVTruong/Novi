@@ -27,7 +27,7 @@ const Index = () => {
         <div className="text-center space-y-6">
           <div className="inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-gradient-to-br from-primary to-primary/80 shadow-2xl mb-2 overflow-hidden">
             <img
-              src="/NoviLogo.PNG"
+              src="/NoviLogoInvert.png"
               alt="Novi Logo"
               className="w-14 h-14 object-contain"
             />
