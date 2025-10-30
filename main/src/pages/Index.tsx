@@ -25,7 +25,7 @@ const Index = () => {
       <div className="w-full max-w-lg space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
         {/* Logo & Header */}
         <div className="text-center space-y-6">
-          <div className="inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-gradient-to-br from-primary to-primary/80 shadow-2xl mb-2 overflow-hidden">
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-[#6bd25d] shadow-2xl mb-2 overflow-hidden">
             <img
               src="/NoviLogoInvert.png"
               alt="Novi Logo"
@@ -41,7 +41,7 @@ const Index = () => {
           <div className="pt-2">
             {connected ? (
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-card border border-border/50 shadow-md">
-                <div className="w-2 h-2 rounded-full bg-[#6bd25d] animate-pulse"></div>
+                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
                 <span className="text-sm font-medium">{publicKey?.slice(0, 6)}...{publicKey?.slice(-4)}</span>
               </div>
             ) : (
@@ -60,12 +60,12 @@ const Index = () => {
         <div className="space-y-4">
           <button
             onClick={() => navigate("/pay")}
-            className="group w-full bg-card border border-border/50 hover:border-[#6bd25d]/50 rounded-3xl p-6 shadow-lg hover:shadow-xl transition-all duration-300"
+            className="group w-full bg-card border border-border/50 hover:border-primary/50 rounded-3xl p-6 shadow-lg hover:shadow-xl transition-all duration-300"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-[#6bd25d]/10 flex items-center justify-center group-hover:bg-[#6bd25d]/20 transition-colors">
-                  <ArrowUpFromLine className="w-6 h-6 text-[#6bd25d]" />
+                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                  <ArrowUpFromLine className="w-6 h-6 text-primary" />
                 </div>
                 <div className="text-left">
                   <div className="text-xl font-semibold text-foreground">Request</div>
@@ -78,12 +78,12 @@ const Index = () => {
 
           <button
             onClick={() => navigate("/request")}
-            className="group w-full bg-card border border-border/50 hover:border-[#6bd25d]/50 rounded-3xl p-6 shadow-lg hover:shadow-xl transition-all duration-300"
+            className="group w-full bg-card border border-border/50 hover:border-primary/50 rounded-3xl p-6 shadow-lg hover:shadow-xl transition-all duration-300"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-[#6bd25d]/10 flex items-center justify-center group-hover:bg-[#6bd25d]/20 transition-colors">
-                  <ArrowDownToLine className="w-6 h-6 text-[#6bd25d]" />
+                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                  <ArrowDownToLine className="w-6 h-6 text-primary" />
                 </div>
                 <div className="text-left">
                   <div className="text-xl font-semibold text-foreground">Split Bill</div>
