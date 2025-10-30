@@ -251,10 +251,20 @@ const TransferRedirect = () => {
 
       console.log(`Total instructions in transaction: ${transaction.instructions.length}`);
 
+      // Log each instruction type
+      transaction.instructions.forEach((instruction, index) => {
+        console.log(`Instruction ${index + 1}:`, {
+          programId: instruction.programId.toBase58(),
+          keys: instruction.keys.length,
+          data: instruction.data.length
+        });
+      });
+
       // Send transaction
       console.log("Sending transaction...");
       const signature = await sendTransaction(transaction, connection);
       console.log("Transaction sent! Signature:", signature);
+      console.log("View transaction: https://solscan.io/tx/" + signature + "?cluster=devnet");
 
       // Wait for confirmation
       toast.loading("Confirming transaction...", { id: "tx-confirm" });
@@ -267,8 +277,27 @@ const TransferRedirect = () => {
       }, "confirmed");
 
       console.log("Transaction confirmed!");
-      toast.success(`Payment of ${amount} USDC successful!`, { id: "tx-confirm" });
-      console.log("View on Solscan:", `https://solscan.io/tx/${signature}`);
+
+      // Verify balance changed
+      try {
+        const newSenderAccountInfo = await getAccount(connection, senderTokenAccount);
+        const newSenderBalance = Number(newSenderAccountInfo.amount) / Math.pow(10, USDC_DECIMALS);
+        console.log(`Old balance: ${senderBalance} USDC`);
+        console.log(`New balance: ${newSenderBalance} USDC`);
+        console.log(`Difference: ${senderBalance - newSenderBalance} USDC`);
+
+        if (newSenderBalance === senderBalance) {
+          console.warn("⚠️ WARNING: Balance didn't change! USDC may not have transferred.");
+          toast.warning("Transaction confirmed but balance unchanged. Check the transaction details.");
+        } else {
+          toast.success(`Payment of ${amount} USDC successful!`, { id: "tx-confirm" });
+        }
+      } catch (error) {
+        console.error("Could not verify balance change:", error);
+        toast.success(`Transaction confirmed!`, { id: "tx-confirm" });
+      }
+
+      console.log("View on Solscan:", `https://solscan.io/tx/${signature}?cluster=devnet`);
     } catch (err: any) {
       console.error("Payment error:", err);
       console.error("Full error object:", JSON.stringify(err, null, 2));
