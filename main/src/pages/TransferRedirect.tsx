@@ -141,6 +141,29 @@ const TransferRedirect = () => {
         publicKey
       );
 
+      // CHECK IF SENDER HAS USDC ACCOUNT
+      let senderAccountExists = false;
+      let senderBalance = 0;
+      try {
+        const senderAccountInfo = await getAccount(connection, senderTokenAccount);
+        senderAccountExists = true;
+        senderBalance = Number(senderAccountInfo.amount) / Math.pow(10, USDC_DECIMALS);
+        console.log(`Sender USDC account exists. Balance: ${senderBalance} USDC`);
+      } catch (error) {
+        console.error("Sender USDC account not found");
+        toast.error("You don't have a USDC account. Please add USDC to your wallet first.");
+        setIsProcessing(false);
+        return;
+      }
+
+      // Check if sender has enough USDC
+      const requiredAmount = parseFloat(amount);
+      if (senderBalance < requiredAmount) {
+        toast.error(`Insufficient USDC balance. You have ${senderBalance} USDC but need ${requiredAmount} USDC`);
+        setIsProcessing(false);
+        return;
+      }
+
       // Get the recipient's USDC token account
       const recipientTokenAccount = await getAssociatedTokenAddress(
         USDC_MINT,
@@ -160,14 +183,17 @@ const TransferRedirect = () => {
 
       // Create transaction
       const transaction = new Transaction();
+      console.log("=== BUILDING TRANSACTION ===");
 
       // Check if recipient's USDC account exists, if not create it
+      let recipientAccountExists = false;
       try {
         await getAccount(connection, recipientTokenAccount);
-        console.log("Recipient USDC account exists");
+        recipientAccountExists = true;
+        console.log("✓ Recipient USDC account exists");
       } catch (error) {
         // Account doesn't exist, need to create it
-        console.log("Creating recipient USDC account");
+        console.log("✓ Adding instruction: Create recipient's USDC account");
         toast.info("Creating recipient's USDC account...");
         transaction.add(
           createAssociatedTokenAccountInstruction(
@@ -180,6 +206,10 @@ const TransferRedirect = () => {
       }
 
       // Add USDC transfer instruction
+      console.log(`✓ Adding instruction: Transfer ${amount} USDC (${amountInTokenUnits} base units)`);
+      console.log(`  From: ${senderTokenAccount.toBase58()}`);
+      console.log(`  To: ${recipientTokenAccount.toBase58()}`);
+
       transaction.add(
         createTransferInstruction(
           senderTokenAccount,
@@ -188,6 +218,8 @@ const TransferRedirect = () => {
           amountInTokenUnits
         )
       );
+
+      console.log(`Total instructions in transaction: ${transaction.instructions.length}`);
 
       // Send transaction
       console.log("Sending transaction...");
