@@ -498,16 +498,16 @@ const TransferRedirect = () => {
                 variant="default"
                 size="lg"
                 className="w-full h-14 text-base font-semibold rounded-2xl shadow-lg hover:shadow-xl transition-all"
-                onClick={handleGeneratePaymentRequest}
+                onClick={handlePayment}
                 disabled={isProcessing}
               >
                 {isProcessing ? (
                   <div className="flex items-center gap-2">
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    Generating...
+                    Processing...
                   </div>
                 ) : (
-                  `Generate Payment Link • $${searchParams.get("amount") || "0"}`
+                  `Confirm Payment • $${searchParams.get("amount") || "0"}`
                 )}
               </Button>
             )}
