@@ -25,11 +25,11 @@ const Index = () => {
       <div className="w-full max-w-lg space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
         {/* Logo & Header */}
         <div className="text-center space-y-6">
-          <div className="inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-[#6bd25d] shadow-2xl mb-2 overflow-hidden">
+          <div className="inline-flex justify-center mb-2 overflow-hidden">
             <img
               src="/NoviLogoInvert.png"
               alt="Novi Logo"
-              className="w-14 h-14 object-contain"
+              className="w-[100px] h-[100px] rounded-[24px] object-contain" // 1.8x bigger + tech-style rounded corners
             />
           </div>
           <div className="space-y-2">
