@@ -25,14 +25,16 @@ const USDC_DECIMALS = 6; // USDC has 6 decimals
 // 4. Update USDC_MINT_DEVNET above with that address
 
 /**
- * TransferRedirect Component
+ * TransferRedirect Component - Payment Checkout Page
  *
- * This component handles Solana Pay deep link redirects by:
- * 1. Reading query parameters from the URL (recipient, amount, label, message)
- * 2. Validating the recipient wallet address
- * 3. Building a valid Solana Pay deep link
- * 4. Automatically redirecting the user to open their wallet
- * 5. Showing a fallback message if the wallet doesn't open
+ * This is the recipient-facing payment page shown when a payer clicks a payment link.
+ * It acts as a checkout page that:
+ * 1. Reads payment details from URL (recipient, amount, label, message)
+ * 2. Displays payment details clearly to the payer
+ * 3. Shows recipient wallet for verification
+ * 4. Prompts payer to connect wallet and confirm payment
+ * 5. Processes USDC transfer from payer to recipient
+ * 6. Shows success/failure confirmation with transaction details
  */
 const TransferRedirect = () => {
   // Get URL query parameters using React Router's useSearchParams hook
@@ -439,79 +441,106 @@ const TransferRedirect = () => {
   }
 
   // MAIN STATE: Show wallet connection and payment interface
+  const recipient = searchParams.get("recipient");
+  const amount = searchParams.get("amount");
+  const label = searchParams.get("label");
+  const message = searchParams.get("message");
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-6">
-      <div className="max-w-lg w-full text-center space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-        <div className="space-y-8">
-          {/* Header */}
-          <div className="space-y-3">
-            <h1 className="text-4xl font-bold text-foreground tracking-tight">
-              Create Payment Request
-            </h1>
-            <p className="text-base text-muted-foreground">
-              {connected
-                ? "Generate a payment link to receive USDC"
-                : "Connect wallet to continue"}
-            </p>
+      <div className="max-w-lg w-full space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        {/* Header */}
+        <div className="text-center space-y-3">
+          <h1 className="text-4xl font-bold text-foreground tracking-tight">
+            Complete Your Payment
+          </h1>
+          <p className="text-base text-muted-foreground">
+            You've been requested to pay the following amount:
+          </p>
+        </div>
+
+        {/* Payment Details Card */}
+        <div className="bg-card border border-border/50 rounded-3xl p-8 shadow-xl backdrop-blur-sm space-y-6">
+          {/* Amount Section */}
+          <div className="text-center pb-6 border-b border-border/50">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground mb-3">You owe</div>
+            <div className="text-6xl font-bold text-foreground">
+              ${amount || "0"}
+            </div>
+            <div className="text-xl text-muted-foreground mt-2">USDC</div>
           </div>
 
-          {/* Payment Details Card */}
-          {searchParams.get("amount") && (
-            <div className="bg-card border border-border/50 rounded-3xl p-8 shadow-xl backdrop-blur-sm space-y-6">
-              <div className="pb-4 border-b border-border/50">
-                <div className="text-xs uppercase tracking-wider text-muted-foreground mb-3">Amount</div>
-                <div className="text-5xl font-bold text-foreground">
-                  ${searchParams.get("amount")}
-                </div>
-                <div className="text-xl text-muted-foreground mt-2">USDC</div>
+          {/* Description/Label */}
+          {label && (
+            <div className="pb-6 border-b border-border/50">
+              <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Description</div>
+              <div className="text-lg text-foreground font-medium">
+                {label}
               </div>
-              {searchParams.get("label") && (
-                <div className="pb-4 border-b border-border/50">
-                  <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Description</div>
-                  <div className="text-lg text-foreground">
-                    {searchParams.get("label")}
-                  </div>
-                </div>
-              )}
-              {connected && publicKey && (
-                <div>
-                  <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Your Wallet</div>
-                  <div className="text-sm text-foreground font-mono break-all">
-                    {publicKey.toBase58()}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Payments will be sent to this address
-                  </p>
-                </div>
-              )}
             </div>
           )}
 
-          {/* Wallet connection / Payment button */}
-          <div className="pt-2">
-            {!connected ? (
-              <div className="flex justify-center">
+          {/* Message/Note */}
+          {message && (
+            <div className="pb-6 border-b border-border/50">
+              <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Note</div>
+              <div className="text-base text-foreground">
+                {message}
+              </div>
+            </div>
+          )}
+
+          {/* Recipient Wallet - Always show so payer can verify */}
+          {recipient && (
+            <div className="bg-muted/30 rounded-2xl p-4 border border-border/30">
+              <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Recipient Wallet</div>
+              <div className="text-sm text-foreground font-mono break-all mb-2">
+                {recipient}
+              </div>
+              <div className="text-xs text-muted-foreground/70 italic">
+                ⚠️ Verify before confirming your payment
+              </div>
+            </div>
+          )}
+
+          {/* Connected Wallet (Payer) - Show for transparency */}
+          {connected && publicKey && (
+            <div className="bg-primary/10 rounded-2xl p-4 border border-primary/20">
+              <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Your Wallet (Paying From)</div>
+              <div className="text-sm text-foreground font-mono break-all">
+                {publicKey.toBase58()}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Wallet Connection / Pay Button */}
+        <div className="space-y-3">
+          {!connected ? (
+            <div className="space-y-4">
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground mb-4">Connect your wallet to complete this payment</p>
                 <WalletMultiButton className="!bg-primary !text-primary-foreground hover:!bg-primary/90 !rounded-2xl !px-8 !py-4 !h-14 !text-base !font-semibold !shadow-lg hover:!shadow-xl !transition-all" />
               </div>
-            ) : (
-              <Button
-                variant="default"
-                size="lg"
-                className="w-full h-14 text-base font-semibold rounded-2xl shadow-lg hover:shadow-xl transition-all"
-                onClick={handlePayment}
-                disabled={isProcessing}
-              >
-                {isProcessing ? (
-                  <div className="flex items-center gap-2">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    Processing...
-                  </div>
-                ) : (
-                  `Confirm Payment • $${searchParams.get("amount") || "0"}`
-                )}
-              </Button>
-            )}
-          </div>
+            </div>
+          ) : (
+            <Button
+              variant="default"
+              size="lg"
+              className="w-full h-16 text-lg font-bold rounded-2xl shadow-xl hover:shadow-2xl transition-all bg-gradient-to-r from-primary to-primary/90"
+              onClick={handlePayment}
+              disabled={isProcessing}
+            >
+              {isProcessing ? (
+                <div className="flex items-center gap-3">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                  <span>Processing Payment...</span>
+                </div>
+              ) : (
+                `Pay $${amount || "0"} Now`
+              )}
+            </Button>
+          )}
         </div>
       </div>
     </div>
@@ -521,49 +550,34 @@ const TransferRedirect = () => {
 export default TransferRedirect;
 
 /*
- * SETUP INSTRUCTIONS
- * ==================
+ * PAYMENT CHECKOUT PAGE - USAGE GUIDE
+ * ====================================
  *
- * 1. ADD ROUTE TO APP.TSX
- *    Open src/App.tsx and add this route inside the <Routes> component:
+ * This is the checkout page where payers complete payment requests.
  *
- *    <Route path="/transfer" element={<TransferRedirect />} />
+ * FLOW:
+ * 1. Recipient creates payment link on /pay page (generates /transfer URL with params)
+ * 2. Recipient shares the payment link
+ * 3. Payer clicks the link and lands on this page
+ * 4. Payer sees payment details (amount, description, recipient wallet)
+ * 5. Payer connects wallet and clicks "Pay $X Now"
+ * 6. USDC transfers from payer → recipient
+ * 7. Success screen shows transaction confirmation
  *
- *    Make sure to also add the import at the top:
- *    import TransferRedirect from "./pages/TransferRedirect";
+ * URL FORMAT:
+ * https://yourapp.com/transfer?recipient=WALLET&amount=10&label=Coffee&message=Thanks
  *
- *    Example placement (before the catch-all route):
- *    ```tsx
- *    <Route path="/" element={<Index />} />
- *    <Route path="/request" element={<Request />} />
- *    <Route path="/pay" element={<Pay />} />
- *    <Route path="/transfer" element={<TransferRedirect />} />
- *    <Route path="*" element={<NotFound />} />
- *    ```
+ * URL PARAMETERS:
+ * - recipient (required): Recipient's Solana wallet address
+ * - amount (required): Amount in USDC (e.g., 10.50)
+ * - label (optional): Short description shown to payer
+ * - message (optional): Additional note/context for payment
  *
- * 2. RUN DEVELOPMENT SERVER
- *    ```bash
- *    npm run dev
- *    ```
+ * EXAMPLE PAYMENT LINK:
+ * /transfer?recipient=GJyX7wS27fECdBRWZhsUMeAzvGPVnc3nQrAqm3EdMST3&amount=5.00&label=Lunch&message=Split%20bill
  *
- * 3. TEST THE COMPONENT
- *    Visit a URL like this in your browser:
- *    http://localhost:5173/transfer?recipient=GJyX7wS27fECdBRWZhsUMeAzvGPVnc3nQrAqm3EdMST3&amount=0.5&label=Payment&message=Thank%20you
- *
- *    Required parameter:
- *    - recipient: Solana wallet address
- *
- *    Optional parameters:
- *    - amount: Amount in USDC (e.g., 10.50)
- *    - label: Short description
- *    - message: Detailed message
- *
- * 4. INTEGRATION WITH PAY BUTTON
- *    When a user clicks "Pay" in your Pay.tsx component, instead of just
- *    copying the link to clipboard, you can redirect them to:
- *
- *    navigate(`/transfer?recipient=${recipient}&amount=${amount}&label=${encodeURIComponent(description)}`);
- *
- *    This will automatically prompt the payer to complete the transaction
- *    in their wallet.
+ * INTEGRATION:
+ * Payment links are automatically generated in Pay.tsx when recipients click
+ * "Generate Payment Link". The link is copied to clipboard for easy sharing
+ * via text, email, social media, etc.
  */
