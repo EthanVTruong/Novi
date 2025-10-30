@@ -111,6 +111,9 @@ const TransferRedirect = () => {
     try {
       setIsProcessing(true);
 
+      // Use connected wallet as the recipient (user is requesting payment TO their wallet)
+      const recipientPubkey = publicKey;
+
       // Build Solana Pay URL with connected wallet as recipient
       const urlFields: TransferRequestURLFields = {
         recipient: recipientPubkey,
