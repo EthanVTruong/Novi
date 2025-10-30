@@ -11,11 +11,39 @@ const Pay = () => {
   const [amount, setAmount] = useState<string>("");
   const [description, setDescription] = useState<string>("");
   const [paymentUrl, setPaymentUrl] = useState<string>("");
+  const [copied, setCopied] = useState(false);
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value.replace(/[^0-9.]/g, "");
     if (value.length > 5) value = value.slice(0, 5); // cap at 5 digits
     setAmount(value);
+  };
+
+  // Reusable copy helper with fallback
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("Payment link copied to clipboard!");
+      setCopied(true);
+    } catch (err) {
+      // Fallback for browsers that don't support clipboard API
+      console.warn("Clipboard API failed, using fallback:", err);
+      try {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-999999px";
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+        toast.success("Payment link copied (fallback)!");
+        setCopied(true);
+      } catch (fallbackErr) {
+        console.error("Fallback copy failed:", fallbackErr);
+        toast.error("Failed to copy link. Please try again.");
+      }
+    }
   };
 
   const handlePay = async () => {
@@ -47,14 +75,17 @@ const Pay = () => {
         message: `Payment for ${description}`,
       });
 
-      // Create the full transfer URL
+      // Create the full transfer URL (absolute URL for sharing)
       const transferUrl = `${window.location.origin}/transfer?${transferParams.toString()}`;
+
+      // Store the URL in state
       setPaymentUrl(transferUrl);
 
-      // Copy to clipboard
-      await navigator.clipboard.writeText(transferUrl);
+      // Reset copied state when generating new link
+      setCopied(false);
 
-      toast.success("Payment link copied to clipboard!");
+      // Automatically copy to clipboard
+      await copyToClipboard(transferUrl);
     } catch (error) {
       toast.error("Failed to generate payment link");
       console.error("Payment link generation error:", error);
@@ -123,6 +154,45 @@ const Pay = () => {
             </div>
           )}
         </div>
+
+        {/* Payment Link Ready UI */}
+        {paymentUrl && (
+          <div className="bg-card border border-border/50 rounded-3xl p-6 shadow-xl backdrop-blur-sm space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-semibold text-foreground">Payment Link Ready</div>
+              <div className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                <span>✓</span>
+                <span>Copied</span>
+              </div>
+            </div>
+            <div className="bg-muted/50 rounded-2xl p-3 text-xs font-mono text-foreground/70 break-all border border-border/30">
+              {paymentUrl}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 rounded-2xl"
+                onClick={() => {
+                  setCopied(false);
+                  copyToClipboard(paymentUrl);
+                }}
+              >
+                {copied ? "Copied!" : "Copy Again"}
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                className="flex-1 rounded-2xl"
+                onClick={() => {
+                  window.open(paymentUrl, '_blank');
+                }}
+              >
+                Open Payment Page
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Pay Button */}
         <Button

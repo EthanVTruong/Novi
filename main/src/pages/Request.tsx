@@ -54,11 +54,39 @@ const Request = () => {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [currentName, setCurrentName] = useState<string>("");
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value.replace(/[^0-9.]/g, "");
     if (value.length > 5) value = value.slice(0, 5); // cap at 5 digits
     setAmount(value);
+  };
+
+  // Reusable copy helper with fallback
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("Payment link copied to clipboard!");
+      setCopied(true);
+    } catch (err) {
+      // Fallback for browsers that don't support clipboard API
+      console.warn("Clipboard API failed, using fallback:", err);
+      try {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-999999px";
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+        toast.success("Payment link copied (fallback)!");
+        setCopied(true);
+      } catch (fallbackErr) {
+        console.error("Fallback copy failed:", fallbackErr);
+        toast.error("Failed to copy link. Please try again.");
+      }
+    }
   };
 
   const addParticipant = () => {
@@ -133,33 +161,14 @@ const Request = () => {
     // Build absolute transfer link (not relative)
     const transferLink = `${window.location.origin}/transfer?${params.toString()}`;
 
-    // Copy to clipboard instead of navigating
-    // This allows the user to share the link with participants
-    try {
-      await navigator.clipboard.writeText(transferLink);
-      toast.success("Split payment link copied to clipboard!");
-    } catch (err) {
-      // Fallback for browsers that don't support clipboard API
-      console.warn("Clipboard API failed, using fallback:", err);
-      try {
-        const textArea = document.createElement("textarea");
-        textArea.value = transferLink;
-        textArea.style.position = "fixed";
-        textArea.style.left = "-999999px";
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand("copy");
-        document.body.removeChild(textArea);
-        toast.success("Split payment link copied to clipboard (fallback)!");
-      } catch (fallbackErr) {
-        console.error("Fallback copy failed:", fallbackErr);
-        toast.error("Failed to copy link. Please try again.");
-        return;
-      }
-    }
-
     // Store the link so UI can display it (allows manual copy or opening)
     setCopiedLink(transferLink);
+
+    // Reset copied state when generating new link
+    setCopied(false);
+
+    // Automatically copy to clipboard using the helper
+    await copyToClipboard(transferLink);
 
     console.log("Split payment link created:", transferLink);
     // IMPORTANT: We do NOT navigate to /transfer anymore
@@ -299,7 +308,7 @@ const Request = () => {
           )}
         </div>
 
-        {/* Copied Link Display */}
+        {/* Payment Link Ready UI */}
         {copiedLink && (
           <div className="bg-card border border-border/50 rounded-3xl p-6 shadow-xl backdrop-blur-sm space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <div className="flex items-center justify-between">
@@ -317,16 +326,12 @@ const Request = () => {
                 variant="outline"
                 size="sm"
                 className="flex-1 rounded-2xl"
-                onClick={async () => {
-                  try {
-                    await navigator.clipboard.writeText(copiedLink);
-                    toast.success("Link copied again!");
-                  } catch (err) {
-                    toast.error("Failed to copy");
-                  }
+                onClick={() => {
+                  setCopied(false);
+                  copyToClipboard(copiedLink);
                 }}
               >
-                Copy Again
+                {copied ? "Copied!" : "Copy Again"}
               </Button>
               <Button
                 variant="default"
@@ -336,7 +341,7 @@ const Request = () => {
                   window.open(copiedLink, '_blank');
                 }}
               >
-                Open Link
+                Open Payment Page
               </Button>
             </div>
           </div>
