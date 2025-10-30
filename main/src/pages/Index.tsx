@@ -24,19 +24,19 @@ const Index = () => {
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-6">
       <div className="w-full max-w-lg space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
         {/* Logo & Header */}
-        <div className="text-center space-y-6">
-          <div className="inline-flex justify-center mb-2 overflow-hidden">
+        <div className="text-center space-y-4"> {/* reduced from space-y-6 to space-y-4 */}
+          <div className="inline-flex justify-center mb-1 overflow-hidden"> {/* reduced mb from 2 to 1 */}
             <img
               src="/NoviLogoInvert.png"
               alt="Novi Logo"
-              className="w-[100px] h-[100px] rounded-[24px] object-contain" // 1.8x bigger + tech-style rounded corners
+              className="w-[100px] h-[100px] rounded-[24px] object-contain"
             />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-1"> {/* reduced from space-y-2 to space-y-1 */}
             <h1 className="text-5xl font-bold text-foreground tracking-tight">Novi</h1>
-            <p className="text-lg text-muted-foreground">Payments via Text</p>
+            <p className="text-lg text-muted-foreground">Pay via Text</p> {/* updated text */}
           </div>
-
+        </div>
           {/* Wallet Connection Status */}
           <div className="pt-2">
             {connected ? (
