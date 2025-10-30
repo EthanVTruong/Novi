@@ -24,36 +24,38 @@ const Index = () => {
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-6">
       <div className="w-full max-w-lg space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
         {/* Logo & Header */}
-        <div className="text-center space-y-4"> {/* reduced from space-y-6 to space-y-4 */}
-          <div className="inline-flex justify-center mb-1 overflow-hidden"> {/* reduced mb from 2 to 1 */}
+        <div className="text-center space-y-4">
+          <div className="inline-flex justify-center mb-1 overflow-hidden">
             <img
               src="/NoviLogoInvert.png"
               alt="Novi Logo"
               className="w-[100px] h-[100px] rounded-[24px] object-contain"
             />
           </div>
-          <div className="space-y-1"> {/* reduced from space-y-2 to space-y-1 */}
+          <div className="space-y-1">
             <h1 className="text-5xl font-bold text-foreground tracking-tight">Novi</h1>
-            <p className="text-lg text-muted-foreground">Pay via Text</p> {/* updated text */}
+            <p className="text-lg text-muted-foreground">Pay via Text</p>
           </div>
         </div>
-          {/* Wallet Connection Status */}
-          <div className="pt-2">
-            {connected ? (
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-card border border-border/50 shadow-md">
-                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                <span className="text-sm font-medium">{publicKey?.slice(0, 6)}...{publicKey?.slice(-4)}</span>
-              </div>
-            ) : (
-              <Button
-                onClick={handleConnectClick}
-                size="lg"
-                className="rounded-2xl px-8 h-12 shadow-lg hover:shadow-xl transition-all"
-              >
-                Connect Wallet
-              </Button>
-            )}
-          </div>
+
+        {/* Wallet Connection Status */}
+        <div className="pt-2">
+          {connected ? (
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-card border border-border/50 shadow-md">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+              <span className="text-sm font-medium">
+                {publicKey?.slice(0, 6)}...{publicKey?.slice(-4)}
+              </span>
+            </div>
+          ) : (
+            <Button
+              onClick={handleConnectClick}
+              size="lg"
+              className="rounded-2xl px-8 h-12 shadow-lg hover:shadow-xl transition-all"
+            >
+              Connect Wallet
+            </Button>
+          )}
         </div>
 
         {/* Action Cards */}
