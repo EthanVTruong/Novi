@@ -3,6 +3,35 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import useWallet from "@/hooks/useWallet";
+
+/**
+ * Request Component - Split Bill Payment Creator
+ *
+ * This component allows users to create split bill payment requests.
+ *
+ * FLOW:
+ * 1. User (owner) enters total amount and description
+ * 2. User adds participants to split the bill with
+ * 3. On submit, calculates per-share amount using safe cents math
+ * 4. Navigates to /transfer page with split parameters
+ *
+ * SAFE ROUNDING LOGIC:
+ * - Convert total to cents to avoid floating point errors
+ * - Calculate base share: Math.floor(totalCents / splitCount)
+ * - Calculate remainder: totalCents % splitCount
+ * - For single-link routing: use base share amount
+ * - For individual links: first 'remainder' participants pay +$0.01
+ *
+ * SPLIT PARAMETERS PASSED TO /transfer:
+ * - recipient: Owner's wallet (receives all split payments)
+ * - amount: Per-share amount (calculated with cents math)
+ * - label: Description of the split
+ * - message: Additional context
+ * - total: Original total amount
+ * - splitCount: Number of participants (including owner)
+ * - shareIndex: (optional) Which share (0-based) for individual links
+ */
 
 interface Participant {
   id: string;
@@ -11,6 +40,7 @@ interface Participant {
 
 const Request = () => {
   const navigate = useNavigate();
+  const { publicKey, connected } = useWallet();
   const [amount, setAmount] = useState<string>("");
   const [description, setDescription] = useState<string>("");
   const [showSplit, setShowSplit] = useState(false);
@@ -38,20 +68,66 @@ const Request = () => {
   };
 
   const handleRequest = () => {
+    // Validate wallet connection
+    if (!connected || !publicKey) {
+      toast.error("Please connect your wallet first");
+      return;
+    }
+
+    // Validate amount
     if (!amount || parseFloat(amount) <= 0) {
       toast.error("Please enter an amount");
       return;
     }
 
+    // Validate description
     if (!description.trim()) {
       toast.error("Please add what this is for");
       return;
     }
 
-    toast.success("Payment request created!");
+    // Get owner wallet address (recipient of split payments)
+    const owner = publicKey;
 
-    const splitId = Math.random().toString(36).substring(7);
-    navigate(`/split/${splitId}`);
+    // Calculate per-share amount using safe cents math
+    const total = parseFloat(amount);
+    // Include owner as a participant (+1)
+    const splitCount = participants.length + 1;
+
+    // Convert to cents to avoid floating point errors
+    const totalCents = Math.round(total * 100);
+    const baseShareCents = Math.floor(totalCents / splitCount);
+    const remainder = totalCents % splitCount;
+
+    // For a simple single link, use the base share amount
+    // (The first 'remainder' participants would pay 1 extra cent if generating individual links)
+    const perShareAmount = (baseShareCents / 100).toFixed(2);
+
+    console.log("=== SPLIT PAYMENT CALCULATION ===");
+    console.log("Total:", total);
+    console.log("Split count:", splitCount);
+    console.log("Total cents:", totalCents);
+    console.log("Base share cents:", baseShareCents);
+    console.log("Remainder cents:", remainder);
+    console.log("Per share amount:", perShareAmount);
+
+    // Build transfer URL with split parameters
+    // This routes to the /transfer page which acts as a payer checkout
+    const params = new URLSearchParams({
+      recipient: owner, // Owner receives all split payments
+      amount: perShareAmount, // Per-share amount
+      label: description,
+      message: `Split payment for ${description}`,
+      total: total.toString(),
+      splitCount: String(splitCount),
+    });
+
+    const transferUrl = `/transfer?${params.toString()}`;
+
+    toast.success("Split payment link created!");
+
+    // Navigate to transfer page showing the payer checkout for one share
+    navigate(transferUrl);
   };
 
   return (

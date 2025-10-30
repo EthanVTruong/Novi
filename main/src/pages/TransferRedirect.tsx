@@ -171,6 +171,9 @@ const TransferRedirect = () => {
       );
 
       // Convert amount to token units (USDC has 6 decimals)
+      // This safely converts decimal amount (e.g., "10.50") to smallest units
+      // For USDC: $10.50 → 10.50 * 10^6 = 10,500,000 base units
+      // For split payments: amount already represents the per-share calculated with cents math
       const amountInTokenUnits = Math.floor(
         parseFloat(amount) * Math.pow(10, USDC_DECIMALS)
       );
@@ -292,8 +295,13 @@ const TransferRedirect = () => {
     const amount = searchParams.get("amount");
     const label = searchParams.get("label");
     const recipient = searchParams.get("recipient");
+    const total = searchParams.get("total");
+    const splitCount = searchParams.get("splitCount");
+    const shareIndex = searchParams.get("shareIndex");
     const network = connection.rpcEndpoint.includes('devnet') ? 'devnet' : 'mainnet';
     const explorerUrl = `https://solscan.io/tx/${transactionSignature}?cluster=${network}`;
+
+    const isSplitPayment = splitCount && total;
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-6">
@@ -311,7 +319,9 @@ const TransferRedirect = () => {
               Payment Complete
             </h1>
             <p className="text-base text-muted-foreground">
-              Transaction finalized on Solana
+              {isSplitPayment
+                ? `Your share (${shareIndex ? `#${Number(shareIndex) + 1}` : "1"} of ${splitCount}) has been paid`
+                : "Transaction finalized on Solana"}
             </p>
           </div>
 
@@ -319,10 +329,17 @@ const TransferRedirect = () => {
           <div className="bg-card border border-border/50 rounded-3xl p-8 shadow-xl space-y-6 backdrop-blur-sm">
             {amount && (
               <div className="pb-4 border-b border-border/50">
-                <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Amount Sent</div>
+                <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
+                  {isSplitPayment ? "Your Share Paid" : "Amount Sent"}
+                </div>
                 <div className="text-4xl font-bold text-foreground">
                   ${amount} <span className="text-2xl font-normal text-muted-foreground">USDC</span>
                 </div>
+                {isSplitPayment && (
+                  <div className="mt-3 text-sm text-muted-foreground">
+                    Part of ${total} total split among {splitCount} people
+                  </div>
+                )}
               </div>
             )}
             {label && (
@@ -445,6 +462,12 @@ const TransferRedirect = () => {
   const amount = searchParams.get("amount");
   const label = searchParams.get("label");
   const message = searchParams.get("message");
+  const total = searchParams.get("total");
+  const splitCount = searchParams.get("splitCount");
+  const shareIndex = searchParams.get("shareIndex");
+
+  // Determine if this is a split payment
+  const isSplitPayment = splitCount && total;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-6">
@@ -455,7 +478,9 @@ const TransferRedirect = () => {
             Complete Your Payment
           </h1>
           <p className="text-base text-muted-foreground">
-            You've been requested to pay the following amount:
+            {isSplitPayment
+              ? `This is a split payment — you're paying ${shareIndex ? `share #${Number(shareIndex) + 1}` : "your share"} of ${splitCount}`
+              : "You've been requested to pay the following amount:"}
           </p>
         </div>
 
@@ -468,6 +493,18 @@ const TransferRedirect = () => {
               ${amount || "0"}
             </div>
             <div className="text-xl text-muted-foreground mt-2">USDC</div>
+
+            {/* Split Context */}
+            {isSplitPayment && (
+              <div className="mt-4 pt-4 border-t border-border/30">
+                <div className="text-sm text-muted-foreground">
+                  1 of {splitCount} shares
+                </div>
+                <div className="text-xs text-muted-foreground/70 mt-1">
+                  Total: ${total} split among {splitCount} people
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Description/Label */}
