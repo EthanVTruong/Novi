@@ -344,63 +344,63 @@ const TransferRedirect = () => {
     const explorerUrl = `https://solscan.io/tx/${transactionSignature}?cluster=${network}`;
 
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="max-w-md w-full text-center space-y-8">
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-6">
+        <div className="max-w-lg w-full text-center space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
           {/* Success Icon */}
           <div className="flex justify-center">
-            <div className="w-20 h-20 rounded-full bg-green-500/10 flex items-center justify-center">
-              <div className="text-5xl">✅</div>
+            <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-green-500/20 to-green-600/10 flex items-center justify-center shadow-lg">
+              <div className="text-6xl">✅</div>
             </div>
           </div>
 
           {/* Success Message */}
           <div className="space-y-3">
-            <h1 className="text-3xl font-bold text-foreground">
-              Payment Successful!
+            <h1 className="text-4xl font-bold text-foreground tracking-tight">
+              Payment Complete
             </h1>
-            <p className="text-lg text-muted-foreground">
-              Your payment has been finalized on-chain
+            <p className="text-base text-muted-foreground">
+              Transaction finalized on Solana
             </p>
           </div>
 
-          {/* Payment Details */}
-          <div className="bg-input/50 rounded-lg p-6 space-y-4">
+          {/* Payment Details Card */}
+          <div className="bg-card border border-border/50 rounded-3xl p-8 shadow-xl space-y-6 backdrop-blur-sm">
             {amount && (
-              <div>
-                <div className="text-sm text-muted-foreground">Amount</div>
-                <div className="text-2xl font-bold text-foreground">
-                  ${amount} USDC
+              <div className="pb-4 border-b border-border/50">
+                <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Amount</div>
+                <div className="text-4xl font-bold text-foreground">
+                  ${amount} <span className="text-2xl font-normal text-muted-foreground">USDC</span>
                 </div>
               </div>
             )}
             {label && (
-              <div>
-                <div className="text-sm text-muted-foreground">For</div>
+              <div className="pb-4 border-b border-border/50">
+                <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Description</div>
                 <div className="text-lg text-foreground">{label}</div>
               </div>
             )}
             <div>
-              <div className="text-sm text-muted-foreground">Transaction Signature</div>
-              <div className="text-xs text-foreground font-mono break-all mt-1">
+              <div className="text-xs uppercase tracking-wider text-muted-foreground mb-3">Transaction</div>
+              <div className="text-xs text-muted-foreground/70 font-mono break-all bg-muted/30 rounded-2xl p-4">
                 {transactionSignature}
               </div>
             </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="space-y-3">
+          <div className="space-y-3 pt-2">
             <Button
               variant="default"
               size="lg"
-              className="w-full"
+              className="w-full h-14 rounded-2xl text-base font-semibold shadow-lg hover:shadow-xl transition-all"
               onClick={() => window.open(explorerUrl, '_blank')}
             >
-              View on Solana Explorer
+              View on Explorer
             </Button>
             <Button
-              variant="outline"
+              variant="ghost"
               size="lg"
-              className="w-full"
+              className="w-full h-14 rounded-2xl text-base"
               onClick={() => window.location.href = '/'}
             >
               Back to Home
@@ -414,31 +414,31 @@ const TransferRedirect = () => {
   // FAILURE STATE: Show error message if transaction failed
   if (transactionStatus === "failed") {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="max-w-md w-full text-center space-y-8">
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-destructive/5 flex items-center justify-center p-6">
+        <div className="max-w-lg w-full text-center space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
           {/* Error Icon */}
           <div className="flex justify-center">
-            <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center">
-              <div className="text-5xl">❌</div>
+            <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-red-500/20 to-red-600/10 flex items-center justify-center shadow-lg">
+              <div className="text-6xl">❌</div>
             </div>
           </div>
 
           {/* Error Message */}
           <div className="space-y-3">
-            <h1 className="text-3xl font-bold text-foreground">
+            <h1 className="text-4xl font-bold text-foreground tracking-tight">
               Payment Failed
             </h1>
-            <p className="text-lg text-muted-foreground">
+            <p className="text-base text-muted-foreground max-w-md mx-auto">
               {transactionError || "The transaction could not be completed"}
             </p>
           </div>
 
           {/* Action Buttons */}
-          <div className="space-y-3">
+          <div className="space-y-3 pt-4">
             <Button
               variant="default"
               size="lg"
-              className="w-full"
+              className="w-full h-14 rounded-2xl text-base font-semibold shadow-lg hover:shadow-xl transition-all"
               onClick={() => {
                 setTransactionStatus("idle");
                 setTransactionError("");
@@ -448,9 +448,9 @@ const TransferRedirect = () => {
               Try Again
             </Button>
             <Button
-              variant="outline"
+              variant="ghost"
               size="lg"
-              className="w-full"
+              className="w-full h-14 rounded-2xl text-base"
               onClick={() => window.location.href = '/'}
             >
               Back to Home
@@ -482,58 +482,67 @@ const TransferRedirect = () => {
 
   // MAIN STATE: Show wallet connection and payment interface
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="max-w-md w-full text-center space-y-8">
-        <div className="space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-6">
+      <div className="max-w-lg w-full text-center space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="space-y-8">
+          {/* Header */}
           <div className="space-y-3">
-            <div className="text-3xl font-bold text-foreground">
+            <h1 className="text-4xl font-bold text-foreground tracking-tight">
               Ready to Pay
-            </div>
-            <p className="text-lg text-muted-foreground">
+            </h1>
+            <p className="text-base text-muted-foreground">
               {connected
-                ? "Review the payment details and confirm"
-                : "Connect your wallet to complete the payment"}
+                ? "Review and confirm payment"
+                : "Connect wallet to continue"}
             </p>
           </div>
 
-          {/* Payment details */}
+          {/* Payment Details Card */}
           {searchParams.get("amount") && (
-            <div className="bg-input/50 rounded-lg p-6 space-y-2">
-              <div className="text-sm text-muted-foreground">Amount</div>
-              <div className="text-4xl font-bold text-foreground">
-                ${searchParams.get("amount")} USDC
+            <div className="bg-card border border-border/50 rounded-3xl p-8 shadow-xl backdrop-blur-sm space-y-6">
+              <div className="pb-4 border-b border-border/50">
+                <div className="text-xs uppercase tracking-wider text-muted-foreground mb-3">Amount</div>
+                <div className="text-5xl font-bold text-foreground">
+                  ${searchParams.get("amount")}
+                </div>
+                <div className="text-xl text-muted-foreground mt-2">USDC</div>
               </div>
               {searchParams.get("label") && (
-                <div className="text-muted-foreground pt-2">
-                  {searchParams.get("label")}
+                <div>
+                  <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Description</div>
+                  <div className="text-lg text-foreground">
+                    {searchParams.get("label")}
+                  </div>
                 </div>
               )}
             </div>
           )}
 
           {/* Wallet connection / Payment button */}
-          {!connected ? (
-            <div className="flex justify-center">
-              <WalletMultiButton className="!bg-primary !text-primary-foreground hover:!bg-primary/90 !rounded-lg !px-6 !py-3 !text-lg !font-semibold" />
-            </div>
-          ) : (
-            <Button
-              variant="default"
-              size="lg"
-              className="w-full text-lg py-6"
-              onClick={handlePayment}
-              disabled={isProcessing}
-            >
-              {isProcessing ? (
-                <div className="flex items-center gap-2">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                  Processing...
-                </div>
-              ) : (
-                `Pay $${searchParams.get("amount") || "0"} USDC`
-              )}
-            </Button>
-          )}
+          <div className="pt-2">
+            {!connected ? (
+              <div className="flex justify-center">
+                <WalletMultiButton className="!bg-primary !text-primary-foreground hover:!bg-primary/90 !rounded-2xl !px-8 !py-4 !h-14 !text-base !font-semibold !shadow-lg hover:!shadow-xl !transition-all" />
+              </div>
+            ) : (
+              <Button
+                variant="default"
+                size="lg"
+                className="w-full h-14 text-base font-semibold rounded-2xl shadow-lg hover:shadow-xl transition-all"
+                onClick={handlePayment}
+                disabled={isProcessing}
+              >
+                {isProcessing ? (
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    Processing...
+                  </div>
+                ) : (
+                  `Confirm Payment • $${searchParams.get("amount") || "0"}`
+                )}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </div>

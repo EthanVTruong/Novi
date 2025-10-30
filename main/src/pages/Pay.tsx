@@ -70,72 +70,79 @@ const Pay = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background p-4 flex items-start justify-center">
-      <div className="max-w-md w-full pt-12 space-y-8">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 p-6 flex items-center justify-center">
+      <div className="max-w-lg w-full space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
         {/* Header */}
         <div className="flex items-center gap-4">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => navigate("/")}
-            className="rounded-full"
+            className="rounded-2xl w-12 h-12 hover:bg-card transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <h1 className="text-2xl font-bold text-foreground">Pay</h1>
+          <h1 className="text-3xl font-bold text-foreground tracking-tight">Request Payment</h1>
         </div>
 
-        {/* Amount Input - $ closer and capped */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center text-foreground">
-            {/* $ slightly closer */}
-            <span className="text-5xl font-light -mr-2">$</span>
+        {/* Main Card */}
+        <div className="bg-card border border-border/50 rounded-3xl p-8 shadow-xl backdrop-blur-sm space-y-8">
+          {/* Amount Input */}
+          <div className="text-center space-y-2">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground mb-4">Amount</div>
+            <div className="inline-flex items-center justify-center text-foreground">
+              <span className="text-5xl font-light text-muted-foreground -mr-2">$</span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={amount}
+                onChange={handleAmountChange}
+                placeholder="0"
+                className="text-7xl font-light bg-transparent border-none outline-none text-center w-auto"
+                style={{ width: `${Math.max(amount.length, 1) + 1}ch` }}
+                autoFocus
+              />
+            </div>
+            <div className="text-sm text-muted-foreground">USDC</div>
+          </div>
+
+          {/* Divider */}
+          <div className="border-t border-border/50"></div>
+
+          {/* Description Input */}
+          <div className="space-y-3">
+            <label className="text-xs uppercase tracking-wider text-muted-foreground">Description</label>
             <input
               type="text"
-              inputMode="decimal"
-              value={amount}
-              onChange={handleAmountChange}
-              placeholder="0"
-              className="text-6xl font-light bg-transparent border-none outline-none text-center w-auto"
-              style={{ width: `${Math.max(amount.length, 1) + 1}ch` }}
-              autoFocus
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="What's it for?"
+              className="w-full px-4 py-3 bg-muted/30 border border-border/50 rounded-2xl text-foreground text-center outline-none focus:border-primary/50 placeholder:text-muted-foreground transition-colors"
+            />
+          </div>
+
+          {/* Recipient Input */}
+          <div className="space-y-3">
+            <label className="text-xs uppercase tracking-wider text-muted-foreground">Recipient</label>
+            <input
+              type="text"
+              value={recipient}
+              onChange={(e) => setRecipient(e.target.value)}
+              placeholder="Wallet address"
+              className="w-full px-4 py-3 bg-muted/30 border border-border/50 rounded-2xl text-foreground text-center outline-none focus:border-primary/50 placeholder:text-muted-foreground font-mono text-sm transition-colors"
             />
           </div>
         </div>
 
-        {/* Description Input */}
-        <div className="text-center">
-          <input
-            type="text"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="What's it for?"
-            className="text-lg text-foreground bg-transparent border-none outline-none text-center w-full placeholder:text-muted-foreground"
-          />
-        </div>
-
-        {/* Recipient Input */}
-        <div className="pt-4">
-          <input
-            type="text"
-            value={recipient}
-            onChange={(e) => setRecipient(e.target.value)}
-            placeholder="To (wallet address or username)"
-            className="w-full px-4 py-3 bg-input border border-border rounded-lg text-foreground outline-none focus:border-primary placeholder:text-muted-foreground"
-          />
-        </div>
-
         {/* Pay Button */}
-        <div className="pt-8">
-          <Button
-            variant="default"
-            size="lg"
-            className="w-full"
-            onClick={handlePay}
-          >
-            Pay ${amount || "0"} USDC
-          </Button>
-        </div>
+        <Button
+          variant="default"
+          size="lg"
+          className="w-full h-14 text-base font-semibold rounded-2xl shadow-lg hover:shadow-xl transition-all"
+          onClick={handlePay}
+        >
+          Generate Payment Link • ${amount || "0"} USDC
+        </Button>
       </div>
     </div>
   );

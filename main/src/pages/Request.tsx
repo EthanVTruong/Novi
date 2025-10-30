@@ -55,128 +55,147 @@ const Request = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background p-4">
-      <div className="max-w-md mx-auto pt-8 space-y-8">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 p-6 flex items-center justify-center">
+      <div className="max-w-lg w-full space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
         {/* Header */}
         <div className="flex items-center gap-4">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => navigate("/")}
-            className="rounded-full"
+            className="rounded-2xl w-12 h-12 hover:bg-card transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <h1 className="text-2xl font-bold text-foreground">Request</h1>
+          <h1 className="text-3xl font-bold text-foreground tracking-tight">Split Bill</h1>
         </div>
 
-        {/* Amount Input - $ dynamically attached and centered */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center text-foreground">
-            <span className="text-5xl font-light -mr-2">$</span>
+        {/* Main Card */}
+        <div className="bg-card border border-border/50 rounded-3xl p-8 shadow-xl backdrop-blur-sm space-y-8">
+          {/* Amount Input */}
+          <div className="text-center space-y-2">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground mb-4">Total Amount</div>
+            <div className="inline-flex items-center justify-center text-foreground">
+              <span className="text-5xl font-light text-muted-foreground -mr-2">$</span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={amount}
+                onChange={handleAmountChange}
+                placeholder="0"
+                className="text-7xl font-light bg-transparent border-none outline-none text-center w-auto"
+                style={{ width: `${Math.max(amount.length, 1) + 1}ch` }}
+                autoFocus
+              />
+            </div>
+            <div className="text-sm text-muted-foreground">USDC</div>
+          </div>
+
+          {/* Divider */}
+          <div className="border-t border-border/50"></div>
+
+          {/* Description Input */}
+          <div className="space-y-3">
+            <label className="text-xs uppercase tracking-wider text-muted-foreground">Description</label>
             <input
               type="text"
-              inputMode="decimal"
-              value={amount}
-              onChange={handleAmountChange}
-              placeholder="0"
-              className="text-6xl font-light bg-transparent border-none outline-none text-center w-auto"
-              style={{ width: `${Math.max(amount.length, 1) + 1}ch` }}
-              autoFocus
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="What's it for?"
+              className="w-full px-4 py-3 bg-muted/30 border border-border/50 rounded-2xl text-foreground text-center outline-none focus:border-primary/50 placeholder:text-muted-foreground transition-colors"
             />
           </div>
-        </div>
 
-        {/* Description Input */}
-        <div className="text-center">
-          <input
-            type="text"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="What's it for?"
-            className="text-lg text-foreground bg-transparent border-none outline-none text-center w-full placeholder:text-muted-foreground"
-          />
-        </div>
-
-        {/* Split Option */}
-        {!showSplit && (
-          <div className="pt-8">
+          {/* Split Option */}
+          {!showSplit && (
             <Button
               variant="outline"
               onClick={() => setShowSplit(true)}
-              className="w-full"
+              className="w-full h-12 rounded-2xl border-dashed hover:border-primary/50 hover:bg-primary/5 transition-colors"
             >
               <Users className="w-4 h-4 mr-2" />
-              Split between multiple people
+              Add people to split with
             </Button>
-          </div>
-        )}
+          )}
 
-        {/* Split Section */}
-        {showSplit && (
-          <div className="space-y-4 pt-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium text-foreground">
-                Split with ({participants.length})
-              </h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowSplit(false)}
-                className="text-xs"
-              >
-                Cancel
-              </Button>
-            </div>
-
-            {/* Add Participant */}
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={currentName}
-                onChange={(e) => setCurrentName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addParticipant()}
-                placeholder="Name"
-                className="flex-1 px-4 py-3 bg-input border border-border rounded-lg text-foreground outline-none focus:border-primary"
-              />
-              <Button onClick={addParticipant} variant="default">
-                Add
-              </Button>
-            </div>
-
-            {/* Participants List */}
-            {participants.length > 0 && (
-              <div className="space-y-2">
-                {participants.map((participant) => (
-                  <div
-                    key={participant.id}
-                    className="flex items-center justify-between px-4 py-3 bg-muted rounded-lg"
-                  >
-                    <span className="text-foreground">{participant.name}</span>
-                    <button
-                      onClick={() => removeParticipant(participant.id)}
-                      className="text-sm text-muted-foreground hover:text-destructive"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ))}
+          {/* Split Section */}
+          {showSplit && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs uppercase tracking-wider text-muted-foreground">
+                  Participants ({participants.length})
+                </h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowSplit(false)}
+                  className="text-xs h-8 px-3 rounded-xl"
+                >
+                  Cancel
+                </Button>
               </div>
-            )}
-          </div>
-        )}
+
+              {/* Add Participant */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={currentName}
+                  onChange={(e) => setCurrentName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && addParticipant()}
+                  placeholder="Enter name"
+                  className="flex-1 px-4 py-3 bg-muted/30 border border-border/50 rounded-2xl text-foreground outline-none focus:border-primary/50 placeholder:text-muted-foreground transition-colors"
+                />
+                <Button
+                  onClick={addParticipant}
+                  variant="default"
+                  className="rounded-2xl px-6"
+                >
+                  Add
+                </Button>
+              </div>
+
+              {/* Participants List */}
+              {participants.length > 0 && (
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {participants.map((participant) => (
+                    <div
+                      key={participant.id}
+                      className="flex items-center justify-between px-4 py-3 bg-muted/50 rounded-2xl border border-border/30"
+                    >
+                      <span className="text-foreground font-medium">{participant.name}</span>
+                      <button
+                        onClick={() => removeParticipant(participant.id)}
+                        className="text-xs text-muted-foreground hover:text-destructive transition-colors px-3 py-1 rounded-xl hover:bg-destructive/10"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Split Amount Display */}
+              {participants.length > 0 && amount && parseFloat(amount) > 0 && (
+                <div className="bg-primary/10 rounded-2xl p-4 text-center border border-primary/20">
+                  <div className="text-xs text-muted-foreground mb-1">Each person pays</div>
+                  <div className="text-2xl font-bold text-foreground">
+                    ${(parseFloat(amount) / (participants.length + 1)).toFixed(2)}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Request Button */}
-        <div className="pt-8">
-          <Button
-            variant="default"
-            size="lg"
-            className="w-full"
-            onClick={handleRequest}
-          >
-            Request ${amount || "0"}
-          </Button>
-        </div>
+        <Button
+          variant="default"
+          size="lg"
+          className="w-full h-14 text-base font-semibold rounded-2xl shadow-lg hover:shadow-xl transition-all"
+          onClick={handleRequest}
+        >
+          Create Split Request • ${amount || "0"}
+        </Button>
       </div>
     </div>
   );

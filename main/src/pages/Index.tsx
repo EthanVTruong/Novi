@@ -21,58 +21,88 @@ const Index = () => {
   }
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center p-4"
-      style={{ backgroundColor: "#f6f3f0" }}
-    >
-      <div className="w-full max-w-md space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-        <div className="text-center space-y-3">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary mb-4 overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-6">
+      <div className="w-full max-w-lg space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        {/* Logo & Header */}
+        <div className="text-center space-y-6">
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-gradient-to-br from-primary to-primary/80 shadow-2xl mb-2 overflow-hidden">
             <img
               src="/NoviLogo.PNG"
               alt="Novi Logo"
-              className="w-12 h-12 object-contain"
+              className="w-14 h-14 object-contain"
             />
           </div>
-          <h1 className="text-4xl font-bold text-foreground">Novi</h1>
-          <p className="text-muted-foreground">Payments via Text</p>
+          <div className="space-y-2">
+            <h1 className="text-5xl font-bold text-foreground tracking-tight">Novi</h1>
+            <p className="text-lg text-muted-foreground">Payments via Text</p>
+          </div>
 
-          <div className="mt-2">
+          {/* Wallet Connection Status */}
+          <div className="pt-2">
             {connected ? (
-              <div className="text-sm">Connected: {publicKey?.slice(0, 6)}…</div>
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-card border border-border/50 shadow-md">
+                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                <span className="text-sm font-medium">{publicKey?.slice(0, 6)}...{publicKey?.slice(-4)}</span>
+              </div>
             ) : (
-              <Button onClick={handleConnectClick} size="sm">
+              <Button
+                onClick={handleConnectClick}
+                size="lg"
+                className="rounded-2xl px-8 h-12 shadow-lg hover:shadow-xl transition-all"
+              >
                 Connect Wallet
               </Button>
             )}
           </div>
         </div>
 
-        <div className="space-y-4 pt-8">
-          <Button
-            variant="default"
-            size="lg"
-            className="w-full h-16 text-lg"
+        {/* Action Cards */}
+        <div className="space-y-4">
+          <button
             onClick={() => navigate("/pay")}
+            className="group w-full bg-card border border-border/50 hover:border-primary/50 rounded-3xl p-6 shadow-lg hover:shadow-xl transition-all duration-300"
           >
-            <ArrowUpFromLine className="w-5 h-5 mr-2" />
-            Request
-          </Button>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                  <ArrowUpFromLine className="w-6 h-6 text-primary" />
+                </div>
+                <div className="text-left">
+                  <div className="text-xl font-semibold text-foreground">Request</div>
+                  <div className="text-sm text-muted-foreground">Get paid via link</div>
+                </div>
+              </div>
+              <div className="text-muted-foreground group-hover:translate-x-1 transition-transform">→</div>
+            </div>
+          </button>
 
-          <Button
-            variant="outline"
-            size="lg"
-            className="w-full h-16 text-lg"
+          <button
             onClick={() => navigate("/request")}
+            className="group w-full bg-card border border-border/50 hover:border-primary/50 rounded-3xl p-6 shadow-lg hover:shadow-xl transition-all duration-300"
           >
-            <ArrowDownToLine className="w-5 h-5 mr-2" />
-            Split a Bill
-          </Button>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                  <ArrowDownToLine className="w-6 h-6 text-primary" />
+                </div>
+                <div className="text-left">
+                  <div className="text-xl font-semibold text-foreground">Split Bill</div>
+                  <div className="text-sm text-muted-foreground">Divide costs easily</div>
+                </div>
+              </div>
+              <div className="text-muted-foreground group-hover:translate-x-1 transition-transform">→</div>
+            </div>
+          </button>
         </div>
 
-        <p className="text-center text-sm text-muted-foreground pt-8">
-          Powered By Solana • Instant settlement
-        </p>
+        {/* Footer */}
+        <div className="text-center pt-4">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-muted/30 backdrop-blur-sm">
+            <span className="text-xs text-muted-foreground">Powered by Solana</span>
+            <span className="text-xs text-muted-foreground">•</span>
+            <span className="text-xs text-muted-foreground">Instant settlement</span>
+          </div>
+        </div>
       </div>
     </div>
   );
