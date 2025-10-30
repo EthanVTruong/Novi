@@ -14,7 +14,14 @@ import useWallet from "@/hooks/useWallet";
  * 1. User (owner) enters total amount and description
  * 2. User adds participants to split the bill with
  * 3. On submit, calculates per-share amount using safe cents math
- * 4. Navigates to /transfer page with split parameters
+ * 4. Builds transfer URL and copies it to clipboard (does NOT navigate)
+ * 5. Shows the copied link with "Copy Again" and "Open Link" buttons
+ *
+ * BEHAVIOR CHANGE:
+ * - The component NO LONGER navigates to /transfer automatically
+ * - Instead, it copies the payment link to clipboard for sharing
+ * - This allows the owner to share the link with participants via text/email/etc
+ * - Owner can optionally open the link themselves using the "Open Link" button
  *
  * SAFE ROUNDING LOGIC:
  * - Convert total to cents to avoid floating point errors
@@ -23,7 +30,7 @@ import useWallet from "@/hooks/useWallet";
  * - For single-link routing: use base share amount
  * - For individual links: first 'remainder' participants pay +$0.01
  *
- * SPLIT PARAMETERS PASSED TO /transfer:
+ * SPLIT PARAMETERS IN GENERATED LINK:
  * - recipient: Owner's wallet (receives all split payments)
  * - amount: Per-share amount (calculated with cents math)
  * - label: Description of the split
@@ -46,6 +53,7 @@ const Request = () => {
   const [showSplit, setShowSplit] = useState(false);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [currentName, setCurrentName] = useState<string>("");
+  const [copiedLink, setCopiedLink] = useState<string | null>(null);
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value.replace(/[^0-9.]/g, "");
@@ -67,7 +75,7 @@ const Request = () => {
     setParticipants(participants.filter((p) => p.id !== id));
   };
 
-  const handleRequest = () => {
+  const handleRequest = async () => {
     // Validate wallet connection
     if (!connected || !publicKey) {
       toast.error("Please connect your wallet first");
@@ -112,7 +120,7 @@ const Request = () => {
     console.log("Per share amount:", perShareAmount);
 
     // Build transfer URL with split parameters
-    // This routes to the /transfer page which acts as a payer checkout
+    // Create absolute URL so it can be shared anywhere
     const params = new URLSearchParams({
       recipient: owner, // Owner receives all split payments
       amount: perShareAmount, // Per-share amount
@@ -122,12 +130,40 @@ const Request = () => {
       splitCount: String(splitCount),
     });
 
-    const transferUrl = `/transfer?${params.toString()}`;
+    // Build absolute transfer link (not relative)
+    const transferLink = `${window.location.origin}/transfer?${params.toString()}`;
 
-    toast.success("Split payment link created!");
+    // Copy to clipboard instead of navigating
+    // This allows the user to share the link with participants
+    try {
+      await navigator.clipboard.writeText(transferLink);
+      toast.success("Split payment link copied to clipboard!");
+    } catch (err) {
+      // Fallback for browsers that don't support clipboard API
+      console.warn("Clipboard API failed, using fallback:", err);
+      try {
+        const textArea = document.createElement("textarea");
+        textArea.value = transferLink;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-999999px";
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+        toast.success("Split payment link copied to clipboard (fallback)!");
+      } catch (fallbackErr) {
+        console.error("Fallback copy failed:", fallbackErr);
+        toast.error("Failed to copy link. Please try again.");
+        return;
+      }
+    }
 
-    // Navigate to transfer page showing the payer checkout for one share
-    navigate(transferUrl);
+    // Store the link so UI can display it (allows manual copy or opening)
+    setCopiedLink(transferLink);
+
+    console.log("Split payment link created:", transferLink);
+    // IMPORTANT: We do NOT navigate to /transfer anymore
+    // The link is copied to clipboard for the user to share with participants
   };
 
   return (
@@ -262,6 +298,49 @@ const Request = () => {
             </div>
           )}
         </div>
+
+        {/* Copied Link Display */}
+        {copiedLink && (
+          <div className="bg-card border border-border/50 rounded-3xl p-6 shadow-xl backdrop-blur-sm space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-semibold text-foreground">Payment Link Ready</div>
+              <div className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                <span>✓</span>
+                <span>Copied</span>
+              </div>
+            </div>
+            <div className="bg-muted/50 rounded-2xl p-3 text-xs font-mono text-foreground/70 break-all border border-border/30">
+              {copiedLink}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 rounded-2xl"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(copiedLink);
+                    toast.success("Link copied again!");
+                  } catch (err) {
+                    toast.error("Failed to copy");
+                  }
+                }}
+              >
+                Copy Again
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                className="flex-1 rounded-2xl"
+                onClick={() => {
+                  window.open(copiedLink, '_blank');
+                }}
+              >
+                Open Link
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Request Button */}
         <Button
