@@ -39,7 +39,7 @@ const Index = () => {
         </div>
 
         {/* Wallet Connection Status */}
-        <div className="pt-2">
+        <div className="pt-2 flex justify-center"> {/* Added flex justify-center */}
           {connected ? (
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-card border border-border/50 shadow-md">
               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
