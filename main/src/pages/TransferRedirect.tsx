@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { PublicKey } from "@solana/web3.js";
+import { PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { encodeURL, TransferRequestURLFields } from "@solana/pay";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import BigNumber from "bignumber.js";
 
 /**
@@ -20,14 +22,18 @@ const TransferRedirect = () => {
   // Get URL query parameters using React Router's useSearchParams hook
   const [searchParams] = useSearchParams();
 
+  // Wallet adapter hooks for connecting wallet and sending transactions
+  const { connection } = useConnection();
+  const { publicKey, sendTransaction, connected } = useWallet();
+
   // State to store the generated Solana Pay link
   const [solanaPayLink, setSolanaPayLink] = useState<string>("");
 
   // State to track if there's an error (e.g., missing recipient)
   const [error, setError] = useState<string>("");
 
-  // State to track if wallet opening was attempted
-  const [walletOpened, setWalletOpened] = useState(false);
+  // State to track transaction status
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     // Extract query parameters from URL
@@ -88,11 +94,57 @@ const TransferRedirect = () => {
     }
   }, [searchParams]);
 
-  // Function to handle opening the wallet
-  const handleOpenWallet = () => {
-    if (solanaPayLink) {
-      setWalletOpened(true);
-      window.location.href = solanaPayLink;
+  // Function to handle the payment transaction
+  const handlePayment = async () => {
+    if (!connected || !publicKey) {
+      toast.error("Please connect your wallet first");
+      return;
+    }
+
+    const recipient = searchParams.get("recipient");
+    const amount = searchParams.get("amount");
+
+    if (!recipient) {
+      toast.error("Missing recipient address");
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+
+      // Parse recipient address
+      const recipientPubkey = new PublicKey(recipient);
+
+      // Create transaction
+      const transaction = new Transaction();
+
+      // Add transfer instruction
+      const amountInLamports = amount
+        ? Math.floor(parseFloat(amount) * LAMPORTS_PER_SOL)
+        : 0;
+
+      transaction.add(
+        SystemProgram.transfer({
+          fromPubkey: publicKey,
+          toPubkey: recipientPubkey,
+          lamports: amountInLamports,
+        })
+      );
+
+      // Send transaction
+      const signature = await sendTransaction(transaction, connection);
+
+      // Wait for confirmation
+      toast.loading("Confirming transaction...", { id: "tx-confirm" });
+      await connection.confirmTransaction(signature, "confirmed");
+
+      toast.success("Payment successful!", { id: "tx-confirm" });
+      console.log("Transaction signature:", signature);
+    } catch (err: any) {
+      console.error("Payment error:", err);
+      toast.error(err.message || "Payment failed");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -115,74 +167,61 @@ const TransferRedirect = () => {
     );
   }
 
-  // MAIN STATE: Show button to open wallet
+  // MAIN STATE: Show wallet connection and payment interface
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="max-w-md w-full text-center space-y-8">
-        {!walletOpened ? (
-          // Before wallet is opened - show call to action
-          <div className="space-y-6">
-            <div className="space-y-3">
-              <div className="text-3xl font-bold text-foreground">
-                Ready to Pay
-              </div>
-              <p className="text-lg text-muted-foreground">
-                Click the button below to open your Solana wallet and complete the payment
-              </p>
+        <div className="space-y-6">
+          <div className="space-y-3">
+            <div className="text-3xl font-bold text-foreground">
+              Ready to Pay
             </div>
+            <p className="text-lg text-muted-foreground">
+              {connected
+                ? "Review the payment details and confirm"
+                : "Connect your wallet to complete the payment"}
+            </p>
+          </div>
 
-            {/* Payment details */}
-            {searchParams.get("amount") && (
-              <div className="bg-input/50 rounded-lg p-6 space-y-2">
-                <div className="text-sm text-muted-foreground">Amount</div>
-                <div className="text-4xl font-bold text-foreground">
-                  {searchParams.get("amount")} SOL
-                </div>
-                {searchParams.get("label") && (
-                  <div className="text-muted-foreground pt-2">
-                    {searchParams.get("label")}
-                  </div>
-                )}
+          {/* Payment details */}
+          {searchParams.get("amount") && (
+            <div className="bg-input/50 rounded-lg p-6 space-y-2">
+              <div className="text-sm text-muted-foreground">Amount</div>
+              <div className="text-4xl font-bold text-foreground">
+                {searchParams.get("amount")} SOL
               </div>
-            )}
+              {searchParams.get("label") && (
+                <div className="text-muted-foreground pt-2">
+                  {searchParams.get("label")}
+                </div>
+              )}
+            </div>
+          )}
 
-            {/* Open Wallet Button */}
+          {/* Wallet connection / Payment button */}
+          {!connected ? (
+            <div className="flex justify-center">
+              <WalletMultiButton className="!bg-primary !text-primary-foreground hover:!bg-primary/90 !rounded-lg !px-6 !py-3 !text-lg !font-semibold" />
+            </div>
+          ) : (
             <Button
               variant="default"
               size="lg"
               className="w-full text-lg py-6"
-              onClick={handleOpenWallet}
+              onClick={handlePayment}
+              disabled={isProcessing}
             >
-              Open Wallet to Pay
+              {isProcessing ? (
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  Processing...
+                </div>
+              ) : (
+                `Pay ${searchParams.get("amount") || "0"} SOL`
+              )}
             </Button>
-          </div>
-        ) : (
-          // After clicking button - show waiting state
-          <div className="space-y-6">
-            <div className="space-y-4">
-              <div className="text-2xl font-semibold text-foreground">
-                Opening your wallet...
-              </div>
-              <p className="text-muted-foreground">
-                If your wallet didn't open, click the button below to try again
-              </p>
-              {/* Loading spinner */}
-              <div className="flex justify-center pt-4">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-              </div>
-            </div>
-
-            {/* Retry button */}
-            <Button
-              variant="outline"
-              size="lg"
-              className="w-full"
-              onClick={handleOpenWallet}
-            >
-              Try Again
-            </Button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
