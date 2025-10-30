@@ -53,6 +53,11 @@ const TransferRedirect = () => {
   // State to track transaction status
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Transaction success/failure states
+  const [transactionStatus, setTransactionStatus] = useState<"idle" | "processing" | "success" | "failed">("idle");
+  const [transactionSignature, setTransactionSignature] = useState<string>("");
+  const [transactionError, setTransactionError] = useState<string>("");
+
   // Detect network and use appropriate USDC mint
   const USDC_MINT = connection.rpcEndpoint.includes('devnet')
     ? USDC_MINT_DEVNET
@@ -134,6 +139,7 @@ const TransferRedirect = () => {
 
     const recipient = searchParams.get("recipient");
     const amount = searchParams.get("amount");
+    const label = searchParams.get("label");
 
     console.log("=== PAYMENT DEBUG ===");
     console.log("Raw amount from URL:", amount);
@@ -151,6 +157,7 @@ const TransferRedirect = () => {
 
     try {
       setIsProcessing(true);
+      setTransactionStatus("processing");
 
       // Parse recipient address
       const recipientPubkey = new PublicKey(recipient);
@@ -264,19 +271,23 @@ const TransferRedirect = () => {
       console.log("Sending transaction...");
       const signature = await sendTransaction(transaction, connection);
       console.log("Transaction sent! Signature:", signature);
-      console.log("View transaction: https://solscan.io/tx/" + signature + "?cluster=devnet");
+      const network = connection.rpcEndpoint.includes('devnet') ? 'devnet' : 'mainnet';
+      console.log(`View transaction: https://solscan.io/tx/${signature}?cluster=${network}`);
 
-      // Wait for confirmation
-      toast.loading("Confirming transaction...", { id: "tx-confirm" });
+      // Store signature immediately
+      setTransactionSignature(signature);
+
+      // Wait for finalization
+      toast.loading("Finalizing transaction on-chain...", { id: "tx-confirm" });
 
       const latestBlockhash = await connection.getLatestBlockhash();
       await connection.confirmTransaction({
         signature,
         blockhash: latestBlockhash.blockhash,
         lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-      }, "confirmed");
+      }, "finalized"); // Using 'finalized' for full confirmation
 
-      console.log("Transaction confirmed!");
+      console.log("Transaction finalized!");
 
       // Verify balance changed
       try {
@@ -288,16 +299,16 @@ const TransferRedirect = () => {
 
         if (newSenderBalance === senderBalance) {
           console.warn("⚠️ WARNING: Balance didn't change! USDC may not have transferred.");
-          toast.warning("Transaction confirmed but balance unchanged. Check the transaction details.");
-        } else {
-          toast.success(`Payment of ${amount} USDC successful!`, { id: "tx-confirm" });
         }
       } catch (error) {
         console.error("Could not verify balance change:", error);
-        toast.success(`Transaction confirmed!`, { id: "tx-confirm" });
       }
 
-      console.log("View on Solscan:", `https://solscan.io/tx/${signature}?cluster=devnet`);
+      console.log(`View on Solscan: https://solscan.io/tx/${signature}?cluster=${network}`);
+
+      // Update status to success
+      setTransactionStatus("success");
+      toast.dismiss("tx-confirm");
     } catch (err: any) {
       console.error("Payment error:", err);
       console.error("Full error object:", JSON.stringify(err, null, 2));
@@ -309,17 +320,146 @@ const TransferRedirect = () => {
         errorMessage = "Your USDC account not found. Make sure you have USDC in your wallet.";
       } else if (err.message?.includes("insufficient funds") || err.message?.includes("Attempt to debit an account but found no record")) {
         errorMessage = "Insufficient USDC balance or SOL for transaction fees";
-      } else if (err.message?.includes("User rejected")) {
-        errorMessage = "Transaction cancelled";
+      } else if (err.message?.includes("User rejected") || err.message?.includes("User canceled")) {
+        errorMessage = "Transaction cancelled by user";
       } else if (err.message) {
         errorMessage = err.message;
       }
 
+      // Update status to failed
+      setTransactionStatus("failed");
+      setTransactionError(errorMessage);
+      toast.dismiss("tx-confirm");
       toast.error(errorMessage);
     } finally {
       setIsProcessing(false);
     }
   };
+
+  // SUCCESS STATE: Show success message after transaction is finalized
+  if (transactionStatus === "success") {
+    const amount = searchParams.get("amount");
+    const label = searchParams.get("label");
+    const network = connection.rpcEndpoint.includes('devnet') ? 'devnet' : 'mainnet';
+    const explorerUrl = `https://solscan.io/tx/${transactionSignature}?cluster=${network}`;
+
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="max-w-md w-full text-center space-y-8">
+          {/* Success Icon */}
+          <div className="flex justify-center">
+            <div className="w-20 h-20 rounded-full bg-green-500/10 flex items-center justify-center">
+              <div className="text-5xl">✅</div>
+            </div>
+          </div>
+
+          {/* Success Message */}
+          <div className="space-y-3">
+            <h1 className="text-3xl font-bold text-foreground">
+              Payment Successful!
+            </h1>
+            <p className="text-lg text-muted-foreground">
+              Your payment has been finalized on-chain
+            </p>
+          </div>
+
+          {/* Payment Details */}
+          <div className="bg-input/50 rounded-lg p-6 space-y-4">
+            {amount && (
+              <div>
+                <div className="text-sm text-muted-foreground">Amount</div>
+                <div className="text-2xl font-bold text-foreground">
+                  ${amount} USDC
+                </div>
+              </div>
+            )}
+            {label && (
+              <div>
+                <div className="text-sm text-muted-foreground">For</div>
+                <div className="text-lg text-foreground">{label}</div>
+              </div>
+            )}
+            <div>
+              <div className="text-sm text-muted-foreground">Transaction Signature</div>
+              <div className="text-xs text-foreground font-mono break-all mt-1">
+                {transactionSignature}
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="space-y-3">
+            <Button
+              variant="default"
+              size="lg"
+              className="w-full"
+              onClick={() => window.open(explorerUrl, '_blank')}
+            >
+              View on Solana Explorer
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              className="w-full"
+              onClick={() => window.location.href = '/'}
+            >
+              Back to Home
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // FAILURE STATE: Show error message if transaction failed
+  if (transactionStatus === "failed") {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="max-w-md w-full text-center space-y-8">
+          {/* Error Icon */}
+          <div className="flex justify-center">
+            <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center">
+              <div className="text-5xl">❌</div>
+            </div>
+          </div>
+
+          {/* Error Message */}
+          <div className="space-y-3">
+            <h1 className="text-3xl font-bold text-foreground">
+              Payment Failed
+            </h1>
+            <p className="text-lg text-muted-foreground">
+              {transactionError || "The transaction could not be completed"}
+            </p>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="space-y-3">
+            <Button
+              variant="default"
+              size="lg"
+              className="w-full"
+              onClick={() => {
+                setTransactionStatus("idle");
+                setTransactionError("");
+                setTransactionSignature("");
+              }}
+            >
+              Try Again
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              className="w-full"
+              onClick={() => window.location.href = '/'}
+            >
+              Back to Home
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ERROR STATE: Show error message if validation failed
   if (error) {
