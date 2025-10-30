@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { PublicKey, Transaction } from "@solana/web3.js";
+import { PublicKey, Transaction, clusterApiUrl } from "@solana/web3.js";
 import {
   getAssociatedTokenAddress,
   createTransferInstruction,
@@ -14,9 +14,17 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import BigNumber from "bignumber.js";
 
-// USDC Mint Address (Mainnet)
-const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
+// USDC Mint Addresses
+const USDC_MINT_MAINNET = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
+// Devnet USDC - If you're using a different devnet USDC token, update this address:
+const USDC_MINT_DEVNET = new PublicKey("4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU");
 const USDC_DECIMALS = 6; // USDC has 6 decimals
+
+// To find your devnet USDC mint address:
+// 1. Open your wallet
+// 2. Click on your USDC token
+// 3. Look for "Token Address" or "Mint Address"
+// 4. Update USDC_MINT_DEVNET above with that address
 
 /**
  * TransferRedirect Component
@@ -44,6 +52,18 @@ const TransferRedirect = () => {
 
   // State to track transaction status
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Detect network and use appropriate USDC mint
+  const USDC_MINT = connection.rpcEndpoint.includes('devnet')
+    ? USDC_MINT_DEVNET
+    : USDC_MINT_MAINNET;
+
+  useEffect(() => {
+    console.log("=== NETWORK INFO ===");
+    console.log("RPC Endpoint:", connection.rpcEndpoint);
+    console.log("Using USDC Mint:", USDC_MINT.toBase58());
+    console.log("Network:", connection.rpcEndpoint.includes('devnet') ? 'DEVNET' : 'MAINNET');
+  }, []);
 
   useEffect(() => {
     // Extract query parameters from URL
@@ -148,10 +168,20 @@ const TransferRedirect = () => {
         const senderAccountInfo = await getAccount(connection, senderTokenAccount);
         senderAccountExists = true;
         senderBalance = Number(senderAccountInfo.amount) / Math.pow(10, USDC_DECIMALS);
-        console.log(`Sender USDC account exists. Balance: ${senderBalance} USDC`);
+        console.log(`✓ Sender USDC account exists. Balance: ${senderBalance} USDC`);
+        console.log(`✓ Sender token account: ${senderTokenAccount.toBase58()}`);
       } catch (error) {
-        console.error("Sender USDC account not found");
-        toast.error("You don't have a USDC account. Please add USDC to your wallet first.");
+        console.error("✗ Sender USDC account not found for mint:", USDC_MINT.toBase58());
+        console.error("Error details:", error);
+
+        // Provide helpful error message
+        const network = connection.rpcEndpoint.includes('devnet') ? 'devnet' : 'mainnet';
+        toast.error(
+          `You don't have the correct USDC token for ${network}. ` +
+          `Expected mint: ${USDC_MINT.toBase58().substring(0, 8)}...`
+        );
+
+        console.log("💡 TIP: Check your wallet's USDC token mint address and update USDC_MINT_DEVNET in TransferRedirect.tsx");
         setIsProcessing(false);
         return;
       }
