@@ -11,6 +11,7 @@ import Index from "./pages/Index";
 import Request from "./pages/Request";
 import Pay from "./pages/Pay";
 import Split from "./pages/Split";
+import TransferRedirect from "./pages/TransferRedirect";
 import NotFound from "./pages/NotFound";
 
 // Import Solana wallet adapter styles
@@ -46,6 +47,7 @@ const App = () => (
             <Route path="/request" element={<Request />} />
             <Route path="/pay" element={<Pay />} />
             <Route path="/split/:splitId" element={<Split />} />
+            <Route path="/transfer" element={<TransferRedirect />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
