@@ -110,6 +110,10 @@ const TransferRedirect = () => {
     const recipient = searchParams.get("recipient");
     const amount = searchParams.get("amount");
 
+    console.log("=== PAYMENT DEBUG ===");
+    console.log("Raw amount from URL:", amount);
+    console.log("Parsed amount:", parseFloat(amount || "0"));
+
     if (!recipient) {
       toast.error("Missing recipient address");
       return;
@@ -142,6 +146,12 @@ const TransferRedirect = () => {
       const amountInTokenUnits = Math.floor(
         parseFloat(amount) * Math.pow(10, USDC_DECIMALS)
       );
+
+      console.log(`Converting $${amount} USDC to ${amountInTokenUnits} base units`);
+      console.log(`This equals: ${amountInTokenUnits / Math.pow(10, USDC_DECIMALS)} USDC`);
+
+      // Show user-friendly confirmation
+      toast.info(`Preparing to send ${amount} USDC (${amountInTokenUnits} base units)`);
 
       // Create transaction
       const transaction = new Transaction();
