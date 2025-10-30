@@ -3,7 +3,12 @@ import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { PublicKey, Transaction } from "@solana/web3.js";
-import { getAssociatedTokenAddress, createTransferInstruction } from "@solana/spl-token";
+import {
+  getAssociatedTokenAddress,
+  createTransferInstruction,
+  createAssociatedTokenAccountInstruction,
+  getAccount
+} from "@solana/spl-token";
 import { encodeURL, TransferRequestURLFields } from "@solana/pay";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
@@ -151,10 +156,28 @@ const TransferRedirect = () => {
       console.log(`This equals: ${amountInTokenUnits / Math.pow(10, USDC_DECIMALS)} USDC`);
 
       // Show user-friendly confirmation
-      toast.info(`Preparing to send ${amount} USDC (${amountInTokenUnits} base units)`);
+      toast.info(`Preparing to send ${amount} USDC`);
 
       // Create transaction
       const transaction = new Transaction();
+
+      // Check if recipient's USDC account exists, if not create it
+      try {
+        await getAccount(connection, recipientTokenAccount);
+        console.log("Recipient USDC account exists");
+      } catch (error) {
+        // Account doesn't exist, need to create it
+        console.log("Creating recipient USDC account");
+        toast.info("Creating recipient's USDC account...");
+        transaction.add(
+          createAssociatedTokenAccountInstruction(
+            publicKey, // payer
+            recipientTokenAccount, // ata
+            recipientPubkey, // owner
+            USDC_MINT // mint
+          )
+        );
+      }
 
       // Add USDC transfer instruction
       transaction.add(
@@ -167,25 +190,41 @@ const TransferRedirect = () => {
       );
 
       // Send transaction
+      console.log("Sending transaction...");
       const signature = await sendTransaction(transaction, connection);
+      console.log("Transaction sent! Signature:", signature);
 
       // Wait for confirmation
       toast.loading("Confirming transaction...", { id: "tx-confirm" });
-      await connection.confirmTransaction(signature, "confirmed");
 
-      toast.success("Payment successful!", { id: "tx-confirm" });
-      console.log("Transaction signature:", signature);
+      const latestBlockhash = await connection.getLatestBlockhash();
+      await connection.confirmTransaction({
+        signature,
+        blockhash: latestBlockhash.blockhash,
+        lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+      }, "confirmed");
+
+      console.log("Transaction confirmed!");
+      toast.success(`Payment of ${amount} USDC successful!`, { id: "tx-confirm" });
+      console.log("View on Solscan:", `https://solscan.io/tx/${signature}`);
     } catch (err: any) {
       console.error("Payment error:", err);
+      console.error("Full error object:", JSON.stringify(err, null, 2));
 
       // Provide more helpful error messages
-      if (err.message?.includes("could not find account")) {
-        toast.error("USDC account not found. Make sure both wallets have USDC accounts.");
-      } else if (err.message?.includes("insufficient funds")) {
-        toast.error("Insufficient USDC balance");
-      } else {
-        toast.error(err.message || "Payment failed");
+      let errorMessage = "Payment failed";
+
+      if (err.message?.includes("could not find account") || err.message?.includes("TokenAccountNotFoundError")) {
+        errorMessage = "Your USDC account not found. Make sure you have USDC in your wallet.";
+      } else if (err.message?.includes("insufficient funds") || err.message?.includes("Attempt to debit an account but found no record")) {
+        errorMessage = "Insufficient USDC balance or SOL for transaction fees";
+      } else if (err.message?.includes("User rejected")) {
+        errorMessage = "Transaction cancelled";
+      } else if (err.message) {
+        errorMessage = err.message;
       }
+
+      toast.error(errorMessage);
     } finally {
       setIsProcessing(false);
     }
