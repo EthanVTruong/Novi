@@ -2,11 +2,16 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { PublicKey, Transaction } from "@solana/web3.js";
+import { getAssociatedTokenAddress, createTransferInstruction } from "@solana/spl-token";
 import { encodeURL, TransferRequestURLFields } from "@solana/pay";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import BigNumber from "bignumber.js";
+
+// USDC Mint Address (Mainnet)
+const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
+const USDC_DECIMALS = 6; // USDC has 6 decimals
 
 /**
  * TransferRedirect Component
@@ -64,6 +69,7 @@ const TransferRedirect = () => {
     try {
       const urlFields: TransferRequestURLFields = {
         recipient: recipientPublicKey,
+        splToken: USDC_MINT, // Specify USDC as the SPL token
       };
 
       // Add amount if provided (convert to BigNumber)
@@ -94,7 +100,7 @@ const TransferRedirect = () => {
     }
   }, [searchParams]);
 
-  // Function to handle the payment transaction
+  // Function to handle the USDC payment transaction
   const handlePayment = async () => {
     if (!connected || !publicKey) {
       toast.error("Please connect your wallet first");
@@ -109,26 +115,45 @@ const TransferRedirect = () => {
       return;
     }
 
+    if (!amount || parseFloat(amount) <= 0) {
+      toast.error("Invalid amount");
+      return;
+    }
+
     try {
       setIsProcessing(true);
 
       // Parse recipient address
       const recipientPubkey = new PublicKey(recipient);
 
+      // Get the sender's USDC token account
+      const senderTokenAccount = await getAssociatedTokenAddress(
+        USDC_MINT,
+        publicKey
+      );
+
+      // Get the recipient's USDC token account
+      const recipientTokenAccount = await getAssociatedTokenAddress(
+        USDC_MINT,
+        recipientPubkey
+      );
+
+      // Convert amount to token units (USDC has 6 decimals)
+      const amountInTokenUnits = Math.floor(
+        parseFloat(amount) * Math.pow(10, USDC_DECIMALS)
+      );
+
       // Create transaction
       const transaction = new Transaction();
 
-      // Add transfer instruction
-      const amountInLamports = amount
-        ? Math.floor(parseFloat(amount) * LAMPORTS_PER_SOL)
-        : 0;
-
+      // Add USDC transfer instruction
       transaction.add(
-        SystemProgram.transfer({
-          fromPubkey: publicKey,
-          toPubkey: recipientPubkey,
-          lamports: amountInLamports,
-        })
+        createTransferInstruction(
+          senderTokenAccount,
+          recipientTokenAccount,
+          publicKey,
+          amountInTokenUnits
+        )
       );
 
       // Send transaction
@@ -142,7 +167,15 @@ const TransferRedirect = () => {
       console.log("Transaction signature:", signature);
     } catch (err: any) {
       console.error("Payment error:", err);
-      toast.error(err.message || "Payment failed");
+
+      // Provide more helpful error messages
+      if (err.message?.includes("could not find account")) {
+        toast.error("USDC account not found. Make sure both wallets have USDC accounts.");
+      } else if (err.message?.includes("insufficient funds")) {
+        toast.error("Insufficient USDC balance");
+      } else {
+        toast.error(err.message || "Payment failed");
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -188,7 +221,7 @@ const TransferRedirect = () => {
             <div className="bg-input/50 rounded-lg p-6 space-y-2">
               <div className="text-sm text-muted-foreground">Amount</div>
               <div className="text-4xl font-bold text-foreground">
-                {searchParams.get("amount")} SOL
+                ${searchParams.get("amount")} USDC
               </div>
               {searchParams.get("label") && (
                 <div className="text-muted-foreground pt-2">
@@ -217,7 +250,7 @@ const TransferRedirect = () => {
                   Processing...
                 </div>
               ) : (
-                `Pay ${searchParams.get("amount") || "0"} SOL`
+                `Pay $${searchParams.get("amount") || "0"} USDC`
               )}
             </Button>
           )}
@@ -263,7 +296,7 @@ export default TransferRedirect;
  *    - recipient: Solana wallet address
  *
  *    Optional parameters:
- *    - amount: Amount in SOL (e.g., 0.5)
+ *    - amount: Amount in USDC (e.g., 10.50)
  *    - label: Short description
  *    - message: Detailed message
  *

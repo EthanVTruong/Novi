@@ -133,7 +133,7 @@ const Pay = () => {
             className="w-full"
             onClick={handlePay}
           >
-            Pay ${amount || "0"}
+            Pay ${amount || "0"} USDC
           </Button>
         </div>
       </div>
