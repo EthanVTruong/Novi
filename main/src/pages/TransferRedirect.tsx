@@ -11,6 +11,7 @@ import {
 } from "@solana/spl-token";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import { usePaymentMetaTags } from "@/hooks/usePaymentMetaTags";
 
 // USDC Mint Addresses
 const USDC_MINT_MAINNET = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
@@ -40,6 +41,18 @@ const TransferRedirect = () => {
   // Get URL query parameters using React Router's useSearchParams hook
   const [searchParams] = useSearchParams();
 
+  // Extract payment parameters
+  const recipient = searchParams.get("recipient");
+  const amount = searchParams.get("amount");
+  const label = searchParams.get("label");
+  const message = searchParams.get("message");
+  const total = searchParams.get("total");
+  const splitCount = searchParams.get("splitCount");
+  const shareIndex = searchParams.get("shareIndex");
+
+  // Update meta tags dynamically for this payment
+  usePaymentMetaTags({ amount, label, message, total, splitCount });
+
   // Wallet adapter hooks for connecting wallet and sending transactions
   const { connection } = useConnection();
   const { publicKey, sendTransaction, connected } = useWallet();
@@ -68,12 +81,6 @@ const TransferRedirect = () => {
   }, []);
 
   useEffect(() => {
-    // Extract query parameters from URL
-    const recipient = searchParams.get("recipient");
-    const amount = searchParams.get("amount");
-    const label = searchParams.get("label");
-    const message = searchParams.get("message");
-
     console.log("=== PAYMENT LINK OPENED ===");
     console.log("Recipient:", recipient);
     console.log("Amount:", amount);
@@ -112,10 +119,6 @@ const TransferRedirect = () => {
       toast.error("Please connect your wallet first");
       return;
     }
-
-    const recipient = searchParams.get("recipient");
-    const amount = searchParams.get("amount");
-    const label = searchParams.get("label");
 
     console.log("=== PROCESSING PAYMENT ===");
     console.log("From (payer - you):", publicKey.toBase58());
@@ -458,14 +461,6 @@ const TransferRedirect = () => {
   }
 
   // MAIN STATE: Show wallet connection and payment interface
-  const recipient = searchParams.get("recipient");
-  const amount = searchParams.get("amount");
-  const label = searchParams.get("label");
-  const message = searchParams.get("message");
-  const total = searchParams.get("total");
-  const splitCount = searchParams.get("splitCount");
-  const shareIndex = searchParams.get("shareIndex");
-
   // Determine if this is a split payment
   const isSplitPayment = splitCount && total;
 
