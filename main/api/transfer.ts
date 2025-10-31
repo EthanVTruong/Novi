@@ -54,7 +54,7 @@ export default async function handler(req: Request) {
 
   const description = isSplitPayment
     ? `Pay $${amount} instantly in USDC on Solana for ${label}. Your share of $${total} split among ${splitCount} people.`
-    : `Pay $${amount} instantly in USDC on Solana for ${label}. Fast & secure!`;
+    : `Pay $${amount} instantly in USDC on Solana for ${label}`;
 
   const imageUrl = `${url.origin}/NoviLogo.PNG`;
   const fullUrl = req.url;

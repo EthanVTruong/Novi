@@ -25,12 +25,12 @@ export function usePaymentMetaTags(options: PaymentMetaTagsOptions) {
 
     // Build dynamic title and description
     const title = isSplitPayment
-      ? `$${amount} split payment for ${label}`
-      : `$${amount} payment for ${label}`;
+      ? `$${amount} split payment request for ${label}`
+      : `$${amount} payment request for ${label}`;
 
     const description = isSplitPayment
       ? `Pay $${amount} instantly in USDC on Solana for ${label}. Your share of $${total} split among ${splitCount} people.`
-      : `Pay $${amount} instantly in USDC on Solana for ${label}. Fast & secure!`;
+      : `Pay $${amount} instantly in USDC on Solana for ${label}`;
 
     // Update document title
     document.title = title;
