@@ -1,12 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
-
 /**
  * Vercel Edge Function for Dynamic OG Meta Tags
  *
  * This function intercepts /transfer requests from bots/crawlers (WhatsApp, Telegram, etc.)
  * and serves dynamic HTML with custom Open Graph meta tags based on payment parameters.
  *
- * For real users, it redirects to the SPA normally.
+ * For real users, it serves the normal SPA.
  */
 
 export const config = {
@@ -33,8 +31,9 @@ function isBot(userAgent: string): boolean {
   return BOT_USER_AGENTS.some(bot => ua.includes(bot.toLowerCase()));
 }
 
-export default async function handler(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
+export default async function handler(req: Request) {
+  const url = new URL(req.url);
+  const { searchParams } = url;
   const userAgent = req.headers.get('user-agent') || '';
 
   // Extract payment parameters from URL
@@ -57,8 +56,8 @@ export default async function handler(req: NextRequest) {
     ? `Pay $${amount} instantly in USDC on Solana for ${label}. Your share of $${total} split among ${splitCount} people.`
     : `Pay $${amount} instantly in USDC on Solana for ${label}. Fast & secure!`;
 
-  const imageUrl = `${new URL(req.url).origin}/NoviLogo.PNG`;
-  const url = req.url;
+  const imageUrl = `${url.origin}/NoviLogo.PNG`;
+  const fullUrl = req.url;
 
   // If it's a bot/crawler, serve HTML with dynamic OG tags
   if (isBot(userAgent)) {
@@ -73,7 +72,7 @@ export default async function handler(req: NextRequest) {
     <meta property="og:title" content="${title}" />
     <meta property="og:description" content="${description}" />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="${url}" />
+    <meta property="og:url" content="${fullUrl}" />
     <meta property="og:image" content="${imageUrl}" />
 
     <!-- Twitter Card Meta Tags -->
@@ -86,7 +85,7 @@ export default async function handler(req: NextRequest) {
     <meta name="description" content="${description}" />
 
     <!-- Redirect to SPA after bots have scraped -->
-    <meta http-equiv="refresh" content="0;url=${url}" />
+    <meta http-equiv="refresh" content="0;url=${fullUrl}" />
   </head>
   <body>
     <div style="text-align: center; padding: 50px; font-family: system-ui;">
@@ -97,7 +96,7 @@ export default async function handler(req: NextRequest) {
   </body>
 </html>`;
 
-    return new NextResponse(html, {
+    return new Response(html, {
       headers: {
         'content-type': 'text/html;charset=UTF-8',
         'cache-control': 'public, max-age=60, s-maxage=60',
@@ -106,11 +105,10 @@ export default async function handler(req: NextRequest) {
   }
 
   // For real users, serve the normal SPA index.html
-  const origin = new URL(req.url).origin;
-  const indexResponse = await fetch(`${origin}/index.html`);
+  const indexResponse = await fetch(`${url.origin}/index.html`);
   const indexHtml = await indexResponse.text();
 
-  return new NextResponse(indexHtml, {
+  return new Response(indexHtml, {
     headers: {
       'content-type': 'text/html;charset=UTF-8',
     },
